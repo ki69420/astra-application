@@ -1,0 +1,99 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum FieldType {
+  TEXT
+  TEXTAREA
+  NUMBER
+  DECIMAL
+  DATE
+  DATETIME
+  TIME
+  BOOLEAN
+  EMAIL
+  PHONE
+  URL
+  SELECT
+  MULTI_SELECT
+  RADIO
+  CHECKBOX
+  FILE
+  IMAGE
+}
+
+model Student {
+  id         String   @id @default(uuid())
+  name       String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  custom_field_values StudentCustomFieldValue[]
+
+  @@map("students")
+}
+
+model CustomFieldDefinition {
+  id               String    @id @default(uuid())
+  key              String    @unique
+  label            String
+  field_type       FieldType
+  options_json     Json?
+  display_order    Int       @default(0)
+  is_active        Boolean   @default(true)
+  show_in_homepage Boolean   @default(false)
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
+
+  values StudentCustomFieldValue[]
+
+  @@map("custom_field_definitions")
+}
+
+model Document {
+  id               String    @id @default(uuid())
+  file_name        String
+  original_name    String
+  mime_type        String
+  extension        String
+  size             Int
+  storage_provider String
+  storage_path     String
+  uploaded_by      String
+  uploaded_at      DateTime  @default(now())
+  deleted_at       DateTime?
+
+  custom_field_values StudentCustomFieldValue[]
+
+  @@map("documents")
+}
+
+model StudentCustomFieldValue {
+  id             String    @id @default(uuid())
+  student_id     String
+  field_id       String
+  value_text     String?
+  value_number   Int?
+  value_decimal  Decimal?
+  value_boolean  Boolean?
+  value_date     DateTime?
+  value_datetime DateTime?
+  value_json     Json?
+  document_id    String?
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+
+  student  Student               @relation(fields: [student_id], references: [id])
+  field    CustomFieldDefinition @relation(fields: [field_id], references: [id])
+  document Document?             @relation(fields: [document_id], references: [id])
+
+  @@unique([student_id, field_id])
+  @@index([student_id])
+  @@map("student_custom_field_values")
+}
