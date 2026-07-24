@@ -71,6 +71,8 @@ function renderValue(value: StudentRow["values"][string] | undefined) {
   return "—";
 }
 
+import { useAppStore } from "@/lib/store/use-app-store";
+
 export function StudentsTable({
   data,
   totalEnrolledCount,
@@ -83,6 +85,17 @@ export function StudentsTable({
   searchableFields: SearchableField[];
 }) {
   const router = useRouter();
+  const storeStudents = useAppStore((s) => s.students);
+  const storeEnrolledCount = useAppStore((s) => s.totalEnrolledCount);
+  const storeHomepageFields = useAppStore((s) => s.homepageFields);
+  const storeSearchableFields = useAppStore((s) => s.searchableFields);
+  const isInitialized = useAppStore((s) => s.isInitialized);
+
+  const displayData = (isInitialized && storeStudents.length > 0) ? (storeStudents as StudentRow[]) : data;
+  const displayTotalCount = isInitialized ? storeEnrolledCount : totalEnrolledCount;
+  const displayHomepageFields = (isInitialized && storeHomepageFields.length > 0) ? storeHomepageFields : homepageFields;
+  const displaySearchableFields = (isInitialized && storeSearchableFields.length > 0) ? storeSearchableFields : searchableFields;
+
   const [loadingStudentId, setLoadingStudentId] = React.useState<string | null>(null);
   const [, startTransition] = React.useTransition();
   const [query, setQuery] = React.useState("");
@@ -98,7 +111,7 @@ export function StudentsTable({
   const activeFilterCount = activeFilters.length;
 
   const filtered = React.useMemo(() => {
-    return data.filter((s) => {
+    return displayData.filter((s) => {
       // 1. Search by name
       if (query && !s.name.toLowerCase().includes(query.toLowerCase())) {
         return false;
@@ -113,7 +126,7 @@ export function StudentsTable({
       }
       return true;
     });
-  }, [data, query, activeFilters]);
+  }, [displayData, query, activeFilters]);
 
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const slice = filtered.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
@@ -150,7 +163,7 @@ export function StudentsTable({
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b px-4 py-3 flex items-center justify-between">
         <div>
           <h1 className="text-lg font-bold leading-tight">Students</h1>
-          <p className="text-xs text-muted-foreground">{totalEnrolledCount} enrolled</p>
+          <p className="text-xs text-muted-foreground">{displayTotalCount} enrolled</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -188,13 +201,13 @@ export function StudentsTable({
                 </DialogTitle>
               </DialogHeader>
 
-              {searchableFields.length === 0 ? (
+              {displaySearchableFields.length === 0 ? (
                 <div className="text-center py-8 text-sm text-muted-foreground">
                   No searchable custom fields defined yet. Go to Custom Fields and check &quot;Filterable in Students Page&quot;.
                 </div>
               ) : (
                 <div className="space-y-4 py-2">
-                  {searchableFields.map((field) => {
+                  {displaySearchableFields.map((field) => {
                     const options = (field.options_json ?? []) as string[];
                     const currentVal = filters[field.key] ?? "";
 
@@ -288,7 +301,7 @@ export function StudentsTable({
           <div className="flex flex-wrap items-center gap-1.5 pt-1">
             <span className="text-xs text-muted-foreground font-medium mr-1">Active Filters:</span>
             {activeFilters.map(([key, val]) => {
-              const field = searchableFields.find((f) => f.key === key);
+              const field = displaySearchableFields.find((f) => f.key === key);
               const label = field ? field.label : key;
               return (
                 <Badge
@@ -365,9 +378,9 @@ export function StudentsTable({
                       <p className="text-xs text-muted-foreground mt-0.5">
                         Enrolled {format(new Date(student.created_at), "dd MMM yyyy")}
                       </p>
-                      {homepageFields.length > 0 && (
+                      {displayHomepageFields.length > 0 && (
                         <div className="flex flex-wrap gap-1.5 mt-2">
-                          {homepageFields.map((field) => {
+                          {displayHomepageFields.map((field) => {
                             const val = renderValue(student.values[field.key]);
                             if (val === "—") return null;
                             return (

@@ -5,10 +5,11 @@ import { BottomNav } from "@/components/layout/bottom-nav";
 import { RegisterServiceWorker } from "@/components/pwa/register-service-worker";
 import { Toaster } from "@/components/ui/toaster";
 
+import { StoreSyncProvider } from "@/components/providers/store-sync-provider";
+
 const inter = Inter({ subsets: ["latin"] });
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+
 
 export const metadata: Metadata = {
   title: "Project Astra",
@@ -31,11 +32,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className={inter.className}>
         <RegisterServiceWorker />
-        <div className="bg-background">
-          <main className="pb-20">{children}</main>
-          <BottomNav />
-        </div>
-        <Toaster />
+        <StoreSyncProvider>
+          <div className="bg-background">
+            <main className="pb-20">{children}</main>
+            <BottomNav />
+          </div>
+          <Toaster />
+        </StoreSyncProvider>
       </body>
     </html>
   );

@@ -1,4 +1,5 @@
 "use client";
+import * as React from "react";
 import { useState, useTransition, useSyncExternalStore } from "react";
 import Link from "next/link";
 import {
@@ -132,11 +133,27 @@ function OverlayCard({ field }: { field: Field }) {
   );
 }
 
+import { useAppStore } from "@/lib/store/use-app-store";
+
 export function CustomFieldsTable({ fields: initialFields }: { fields: Field[] }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
-  const [fields, setFields] = useState(initialFields);
+  const storeCustomFields = useAppStore((s) => s.customFields);
+  const optimisticReorderCustomFields = useAppStore((s) => s.optimisticReorderCustomFields);
+  const isInitialized = useAppStore((s) => s.isInitialized);
+
+  const displayFields = (isInitialized && storeCustomFields.length > 0)
+    ? (storeCustomFields as Field[])
+    : initialFields;
+
+  const [fields, setFields] = useState(displayFields);
   const [activeId, setActiveId] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (displayFields.length > 0) {
+      setFields(displayFields);
+    }
+  }, [displayFields]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),

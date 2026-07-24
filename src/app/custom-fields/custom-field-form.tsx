@@ -15,6 +15,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/components/ui/use-toast";
+import { useAppStore } from "@/lib/store/use-app-store";
 
 const FIELD_TYPES = [
   "TEXT", "TEXTAREA", "NUMBER", "DECIMAL", "DATE", "TIME", "DATETIME",
@@ -41,6 +42,10 @@ interface CustomFieldFormProps {
 
 export function CustomFieldForm({ defaultValues, fieldId }: CustomFieldFormProps) {
   const router = useRouter();
+  const optimisticAddCustomField = useAppStore((s) => s.optimisticAddCustomField);
+  const optimisticUpdateCustomField = useAppStore((s) => s.optimisticUpdateCustomField);
+  const checkAndSyncBackground = useAppStore((s) => s.checkAndSyncBackground);
+
   const {
     register,
     handleSubmit,
@@ -57,31 +62,57 @@ export function CustomFieldForm({ defaultValues, fieldId }: CustomFieldFormProps
 
   async function onSubmit(data: FormData) {
     const options_json = data.options.map((o) => o.value).filter(Boolean);
-    const payload = {
-      key: data.key?.trim() || undefined,
+    const key = data.key?.trim() || data.label.toLowerCase().replace(/\s+/g, "_");
+
+    const optimisticField = {
+      id: fieldId || `temp-${Date.now()}`,
+      key,
       label: data.label,
       field_type: data.field_type,
-      options_json: options_json.length ? options_json : undefined,
       show_in_homepage: data.show_in_homepage,
       is_searchable: data.is_searchable,
+      display_order: 999,
+      options_json: options_json.length ? options_json : undefined,
     };
 
-    const url = fieldId ? `/api/custom-fields/${fieldId}` : "/api/custom-fields";
-    const method = fieldId ? "PATCH" : "POST";
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (!res.ok) {
-      const err = await res.json();
-      toast({ variant: "destructive", title: "Error", description: JSON.stringify(err.error) });
-      return;
+    // 1. INSTANT Optimistic UI Update & Redirect (0ms latency!)
+    if (fieldId) {
+      optimisticUpdateCustomField(fieldId, optimisticField);
+    } else {
+      optimisticAddCustomField(optimisticField);
     }
-    toast({ title: fieldId ? "Field updated" : "Field created" });
+
     router.push("/custom-fields");
-    router.refresh();
+    toast({ title: fieldId ? "Field updated" : "Field created" });
+
+    // 2. BACKGROUND Async save to Database
+    try {
+      const payload = {
+        key: data.key?.trim() || undefined,
+        label: data.label,
+        field_type: data.field_type,
+        options_json: options_json.length ? options_json : undefined,
+        show_in_homepage: data.show_in_homepage,
+        is_searchable: data.is_searchable,
+      };
+
+      const url = fieldId ? `/api/custom-fields/${fieldId}` : "/api/custom-fields";
+      const method = fieldId ? "PATCH" : "POST";
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        toast({ variant: "destructive", title: "Save error", description: JSON.stringify(err.error) });
+      }
+
+      checkAndSyncBackground();
+    } catch (err) {
+      toast({ variant: "destructive", title: "Background error", description: String(err) });
+    }
   }
 
   return (

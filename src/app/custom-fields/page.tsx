@@ -4,8 +4,7 @@ import { NavButton } from "@/components/ui/nav-button";
 import { Plus } from "lucide-react";
 import { CustomFieldsTable } from "./custom-fields-table";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+
 
 export default async function CustomFieldsPage() {
   const fields = await prisma.customFieldDefinition.findMany({

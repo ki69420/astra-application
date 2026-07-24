@@ -1,8 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { StudentsTable } from "./students-table";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+
 
 export default async function StudentsPage() {
   const [students, homepageFields, searchableFields] = await Promise.all([

@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/components/ui/use-toast";
 import { Loader2 } from "lucide-react";
+import { useAppStore, type StudentRow } from "@/lib/store/use-app-store";
 
 type FormData = Record<string, unknown>;
 
@@ -20,6 +21,10 @@ interface StudentFormProps {
 
 export function StudentForm({ customFields, defaultValues, studentId }: StudentFormProps) {
   const router = useRouter();
+  const optimisticAddStudent = useAppStore((s) => s.optimisticAddStudent);
+  const optimisticUpdateStudent = useAppStore((s) => s.optimisticUpdateStudent);
+  const checkAndSyncBackground = useAppStore((s) => s.checkAndSyncBackground);
+
   const {
     register,
     handleSubmit,
@@ -39,30 +44,77 @@ export function StudentForm({ customFields, defaultValues, studentId }: StudentF
   }
 
   async function onSubmit(data: FormData) {
-    const payload: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(data)) {
-      if (value instanceof File) {
-        const uploaded = await uploadFile(value);
-        payload[key] = uploaded.id;
-      } else {
-        payload[key] = value;
+    const studentName = String(data.name || "New Student");
+    const tempId = studentId || `temp-${Date.now()}`;
+
+    // Construct local values for optimistic update
+    const valuesObj: StudentRow["values"] = {};
+    for (const field of customFields) {
+      const rawVal = data[field.key];
+      if (rawVal != null && rawVal !== "") {
+        valuesObj[field.key] = {
+          value_text: typeof rawVal === "string" ? rawVal : null,
+          value_number: typeof rawVal === "number" ? rawVal : null,
+          value_boolean: typeof rawVal === "boolean" ? rawVal : null,
+          value_date: typeof rawVal === "string" ? rawVal : null,
+          field: { key: field.key, label: field.label, field_type: field.field_type },
+        };
       }
     }
-    const url = studentId ? `/api/students/${studentId}` : "/api/students";
-    const method = studentId ? "PATCH" : "POST";
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      toast({ variant: "destructive", title: "Error", description: JSON.stringify(err.error || err) });
-      return;
+
+    // 1. INSTANT Optimistic UI Update & Redirect (0ms latency!)
+    if (studentId) {
+      optimisticUpdateStudent(studentId, studentName, valuesObj);
+    } else {
+      optimisticAddStudent({
+        id: tempId,
+        name: studentName,
+        created_at: new Date().toISOString(),
+        values: valuesObj,
+      });
     }
-    toast({ title: studentId ? "Student updated" : "Student created" });
+
     router.push("/students");
-    router.refresh();
+    toast({ title: studentId ? "Student updated" : "Student created" });
+
+    // 2. BACKGROUND Async save to Database
+    try {
+      const payload: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(data)) {
+        if (value instanceof File) {
+          const uploaded = await uploadFile(value);
+          payload[key] = uploaded.id;
+        } else {
+          payload[key] = value;
+        }
+      }
+
+      const url = studentId ? `/api/students/${studentId}` : "/api/students";
+      const method = studentId ? "PATCH" : "POST";
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast({
+          variant: "destructive",
+          title: "Save error",
+          description: JSON.stringify(err.error || err),
+        });
+      }
+
+      // Re-sync background timestamp
+      checkAndSyncBackground();
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Background save error",
+        description: String(err),
+      });
+    }
   }
 
   const visibleFields = customFields.filter((f) => f.is_active);
