@@ -3,6 +3,9 @@ import { revalidatePath } from "next/cache";
 import { prisma, Prisma } from "@/lib/prisma";
 import { hasMeaningfulValue, resolveTypedValue } from "@/lib/field-value-resolver";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function POST(req: NextRequest) {
   const body = (await req.json()) as Record<string, unknown>;
 

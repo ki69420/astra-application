@@ -5,7 +5,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Download, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export const revalidate = 30;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 function formatBytes(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;

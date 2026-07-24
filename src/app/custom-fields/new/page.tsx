@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { CustomFieldForm } from "../custom-field-form";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default function NewCustomFieldPage() {
   return (

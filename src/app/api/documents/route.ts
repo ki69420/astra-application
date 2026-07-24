@@ -5,6 +5,9 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const SUPABASE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || "documents";
 const ALLOWED_MIME_TYPES = new Set([

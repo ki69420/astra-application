@@ -74,8 +74,8 @@ export function StudentsTable({ data, homepageFields }: { data: StudentRow[]; ho
       ) : (
         <div className="space-y-2">
           {slice.map((student) => (
-            <Link key={student.id} href={`/students/${student.id}`}>
-              <Card className="overflow-hidden active:scale-[0.99] transition-transform">
+            <Link key={student.id} href={`/students/${student.id}`} className="block">
+              <Card className="mb-3 overflow-hidden active:scale-[0.99] transition-transform">
                 <CardContent className="p-4">
                   <p className="font-semibold text-sm truncate">{student.name}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">

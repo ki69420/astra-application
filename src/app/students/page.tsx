@@ -4,7 +4,8 @@ import { Plus } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { StudentsTable } from "./students-table";
 
-export const revalidate = 30;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function StudentsPage() {
   const [students, homepageFields] = await Promise.all([

@@ -1,4 +1,4 @@
-const CACHE_NAME = "astra-cache-v1";
+const CACHE_NAME = "astra-cache-v2";
 const OFFLINE_URLS = ["/"];
 
 self.addEventListener("install", (event) => {
@@ -23,18 +23,28 @@ self.addEventListener("fetch", (event) => {
   const requestUrl = new URL(event.request.url);
   if (requestUrl.origin !== self.location.origin) return;
 
-  if (event.request.mode === "navigate") {
+  // Never cache navigation, API routes, or Next.js dynamic/RSC requests
+  if (
+    event.request.mode === "navigate" ||
+    requestUrl.pathname.startsWith("/api/") ||
+    requestUrl.searchParams.has("_rsc") ||
+    event.request.headers.get("RSC") === "1"
+  ) {
     event.respondWith(
       fetch(event.request).catch(() => caches.match("/")),
     );
     return;
   }
 
-  event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) return cachedResponse;
-      return fetch(event.request)
-        .then((networkResponse) => {
+  // Only cache static assets under /_next/static/ or images/fonts
+  if (
+    requestUrl.pathname.startsWith("/_next/static/") ||
+    /\.(png|jpg|jpeg|svg|gif|webp|ico|woff|woff2|ttf|eot)$/i.test(requestUrl.pathname)
+  ) {
+    event.respondWith(
+      caches.match(event.request).then((cachedResponse) => {
+        if (cachedResponse) return cachedResponse;
+        return fetch(event.request).then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             const responseToCache = networkResponse.clone();
             caches.open(CACHE_NAME).then((cache) => {
@@ -42,8 +52,13 @@ self.addEventListener("fetch", (event) => {
             });
           }
           return networkResponse;
-        })
-        .catch(() => caches.match("/"));
-    }),
-  );
+        });
+      })
+    );
+    return;
+  }
+
+  // Default: bypass cache for all other dynamic content
+  event.respondWith(fetch(event.request));
 });
+

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { StudentForm } from "../student-form";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function NewStudentPage() {
   const customFields = await prisma.customFieldDefinition.findMany({
