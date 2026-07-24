@@ -10,7 +10,7 @@ import React from "react";
 
 type CFV = {
   id: string;
-  field: { label: string; field_type: string };
+  field: { label: string; field_type: string; display_order: number };
   value_text: string | null;
   value_number: number | null;
   value_decimal: unknown;
@@ -58,12 +58,22 @@ export default async function StudentDetailPage({
   const { id } = await params;
   const student = await prisma.student.findFirst({
     where: { id },
-    include: { custom_field_values: { include: { field: true } } },
+    include: {
+      custom_field_values: {
+        include: { field: true },
+        orderBy: [
+          { field: { display_order: "asc" } },
+          { field: { label: "asc" } },
+        ],
+      },
+    },
   });
 
   if (!student) notFound();
 
-  const customValues = student.custom_field_values as CFV[];
+  const customValues = [...(student.custom_field_values as CFV[])].sort(
+    (a, b) => (a.field.display_order ?? 0) - (b.field.display_order ?? 0) || a.field.label.localeCompare(b.field.label)
+  );
 
   return (
     <div>
@@ -108,7 +118,7 @@ export default async function StudentDetailPage({
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                Additional Fields
+                Student Details
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">

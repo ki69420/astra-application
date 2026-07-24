@@ -100,6 +100,7 @@ export async function POST(req: NextRequest) {
       options_json: body.options_json ?? undefined,
       display_order: nextOrder,
       show_in_homepage: Boolean(body.show_in_homepage ?? false),
+      is_searchable: body.is_searchable !== undefined ? Boolean(body.is_searchable) : true,
     },
   });
 

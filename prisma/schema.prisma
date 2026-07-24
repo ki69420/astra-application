@@ -48,6 +48,7 @@ model CustomFieldDefinition {
   display_order    Int       @default(0)
   is_active        Boolean   @default(true)
   show_in_homepage Boolean   @default(false)
+  is_searchable    Boolean   @default(false)
   created_at       DateTime  @default(now())
   updated_at       DateTime  @updatedAt
 

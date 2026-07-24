@@ -30,6 +30,7 @@ type FormData = {
   label: string;
   field_type: FieldType;
   show_in_homepage: boolean;
+  is_searchable: boolean;
   options: { value: string }[];
 };
 
@@ -47,7 +48,7 @@ export function CustomFieldForm({ defaultValues, fieldId }: CustomFieldFormProps
     watch,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
-    defaultValues: { show_in_homepage: false, options: [], ...defaultValues },
+    defaultValues: { show_in_homepage: false, is_searchable: true, options: [], ...defaultValues },
   });
 
   const { fields, append, remove } = useFieldArray({ control, name: "options" });
@@ -62,6 +63,7 @@ export function CustomFieldForm({ defaultValues, fieldId }: CustomFieldFormProps
       field_type: data.field_type,
       options_json: options_json.length ? options_json : undefined,
       show_in_homepage: data.show_in_homepage,
+      is_searchable: data.is_searchable,
     };
 
     const url = fieldId ? `/api/custom-fields/${fieldId}` : "/api/custom-fields";
@@ -139,8 +141,26 @@ export function CustomFieldForm({ defaultValues, fieldId }: CustomFieldFormProps
                 />
               )}
             />
-            <Label htmlFor="show_in_homepage" className="text-sm leading-snug">
+            <Label htmlFor="show_in_homepage" className="text-sm leading-snug cursor-pointer">
               Show this in Homepage
+            </Label>
+          </div>
+
+          <div className="flex items-center gap-3 py-1">
+            <Controller
+              name="is_searchable"
+              control={control}
+              render={({ field: f }) => (
+                <Checkbox
+                  id="is_searchable"
+                  checked={!!f.value}
+                  onCheckedChange={f.onChange}
+                  className="h-5 w-5"
+                />
+              )}
+            />
+            <Label htmlFor="is_searchable" className="text-sm leading-snug cursor-pointer">
+              Filterable in Students Page
             </Label>
           </div>
         </CardContent>

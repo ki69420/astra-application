@@ -22,6 +22,8 @@ export async function PATCH(
     updateData.display_order = Number(body.display_order);
   if (body.show_in_homepage !== undefined)
     updateData.show_in_homepage = Boolean(body.show_in_homepage);
+  if (body.is_searchable !== undefined)
+    updateData.is_searchable = Boolean(body.is_searchable);
 
   const field = await prisma.customFieldDefinition.update({
     where: { id },

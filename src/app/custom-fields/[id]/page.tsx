@@ -32,6 +32,7 @@ export default async function EditCustomFieldPage({ params }: { params: Promise<
           label: field.label,
           field_type: field.field_type as "TEXT" | "TEXTAREA" | "NUMBER" | "DECIMAL" | "DATE" | "TIME" | "BOOLEAN" | "PHONE" | "RADIO" | "CHECKBOX" | "FILE" | "IMAGE",
           show_in_homepage: field.show_in_homepage,
+          is_searchable: field.is_searchable,
           options: (field.options_json as string[] | null | undefined)?.map((value) => ({ value })) ?? [],
         }}
       />
