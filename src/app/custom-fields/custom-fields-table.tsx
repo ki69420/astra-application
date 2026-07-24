@@ -19,7 +19,7 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, ChevronRight } from "lucide-react";
+import { GripVertical, ChevronRight, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/components/ui/use-toast";
@@ -44,6 +44,10 @@ function ClientOnly({ children }: { children: React.ReactNode }) {
 }
 
 function SortableCard({ field }: { field: Field }) {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+  const [, startTransition] = useTransition();
+
   const {
     attributes,
     listeners,
@@ -53,13 +57,21 @@ function SortableCard({ field }: { field: Field }) {
     isDragging: isSelfDragging,
   } = useSortable({ id: field.id });
 
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    startTransition(() => {
+      router.push(`/custom-fields/${field.id}`);
+    });
+  };
+
   return (
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={isSelfDragging ? "opacity-0" : ""}
     >
-      <Card className="overflow-hidden">
+      <Card className={`overflow-hidden transition-colors ${isLoading ? "border-primary/50 bg-primary/5" : ""}`}>
         <CardContent className="p-4 flex items-center gap-3">
           <button
             {...attributes}
@@ -69,7 +81,11 @@ function SortableCard({ field }: { field: Field }) {
           >
             <GripVertical className="h-5 w-5" />
           </button>
-          <Link href={`/custom-fields/${field.id}`} className="flex-1 min-w-0 flex items-center justify-between gap-3">
+          <Link
+            href={`/custom-fields/${field.id}`}
+            onClick={handleClick}
+            className="flex-1 min-w-0 flex items-center justify-between gap-3"
+          >
             <div className="min-w-0">
               <p className="font-medium text-sm truncate">{field.label}</p>
               <div className="flex items-center gap-2 mt-1.5">
@@ -81,7 +97,11 @@ function SortableCard({ field }: { field: Field }) {
                 )}
               </div>
             </div>
-            <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />
+            ) : (
+              <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+            )}
           </Link>
         </CardContent>
       </Card>

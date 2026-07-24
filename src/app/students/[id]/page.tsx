@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
+import { NavButton } from "@/components/ui/nav-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Pencil, ArrowLeft, Download } from "lucide-react";
 import React from "react";
@@ -85,12 +86,9 @@ export default async function StudentDetailPage({
             </p>
           </div>
         </div>
-        <Button size="sm" asChild>
-          <Link href={`/students/${student.id}/edit`}>
-            <Pencil className="h-4 w-4 mr-1" />
-            Edit
-          </Link>
-        </Button>
+        <NavButton href={`/students/${student.id}/edit`} icon={Pencil}>
+          Edit
+        </NavButton>
       </header>
 
       <div className="px-4 py-4 space-y-4">

@@ -1,5 +1,4 @@
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { NavButton } from "@/components/ui/nav-button";
 import { Plus } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { StudentsTable } from "./students-table";
@@ -52,12 +51,9 @@ export default async function StudentsPage() {
           <h1 className="text-lg font-bold leading-tight">Students</h1>
           <p className="text-xs text-muted-foreground">{students.length} enrolled</p>
         </div>
-        <Button size="sm" asChild>
-          <Link href="/students/new">
-            <Plus className="h-4 w-4 mr-1" />
-            Add
-          </Link>
-        </Button>
+        <NavButton href="/students/new" icon={Plus}>
+          Add
+        </NavButton>
       </header>
       <div className="flex-1 px-4 py-4">
         <StudentsTable data={rows} homepageFields={homepageFields} />

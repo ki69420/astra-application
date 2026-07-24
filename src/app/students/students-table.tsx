@@ -2,7 +2,8 @@
 import * as React from "react";
 import Link from "next/link";
 import { format } from "date-fns";
-import { Search } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Search, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +43,9 @@ function renderValue(value: StudentRow["values"][string] | undefined) {
 }
 
 export function StudentsTable({ data, homepageFields }: { data: StudentRow[]; homepageFields: HomepageField[] }) {
+  const router = useRouter();
+  const [loadingStudentId, setLoadingStudentId] = React.useState<string | null>(null);
+  const [, startTransition] = React.useTransition();
   const [query, setQuery] = React.useState("");
   const [page, setPage] = React.useState(0);
   const PAGE_SIZE = 15;
@@ -53,6 +57,14 @@ export function StudentsTable({ data, homepageFields }: { data: StudentRow[]; ho
 
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const slice = filtered.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
+
+  const handleCardClick = (e: React.MouseEvent, id: string, href: string) => {
+    e.preventDefault();
+    setLoadingStudentId(id);
+    startTransition(() => {
+      router.push(href);
+    });
+  };
 
   return (
     <div className="space-y-3">
@@ -73,31 +85,46 @@ export function StudentsTable({ data, homepageFields }: { data: StudentRow[]; ho
         <div className="text-center py-16 text-muted-foreground text-sm">No students found.</div>
       ) : (
         <div className="space-y-2">
-          {slice.map((student) => (
-            <Link key={student.id} href={`/students/${student.id}`} className="block">
-              <Card className="mb-3 overflow-hidden active:scale-[0.99] transition-transform">
-                <CardContent className="p-4">
-                  <p className="font-semibold text-sm truncate">{student.name}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Enrolled {format(new Date(student.created_at), "dd MMM yyyy")}
-                  </p>
-                  {homepageFields.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {homepageFields.map((field) => {
-                        const val = renderValue(student.values[field.key]);
-                        if (val === "—") return null;
-                        return (
-                          <Badge key={field.key} variant="secondary" className="text-xs font-normal">
-                            {field.label}: {val}
-                          </Badge>
-                        );
-                      })}
+          {slice.map((student) => {
+            const isLoading = loadingStudentId === student.id;
+            const href = `/students/${student.id}`;
+
+            return (
+              <Link
+                key={student.id}
+                href={href}
+                onClick={(e) => handleCardClick(e, student.id, href)}
+                className="block"
+              >
+                <Card className={`mb-3 overflow-hidden active:scale-[0.99] transition-transform ${isLoading ? "border-primary/50 bg-primary/5" : ""}`}>
+                  <CardContent className="p-4 relative">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-semibold text-sm truncate">{student.name}</p>
+                      {isLoading && (
+                        <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />
+                      )}
                     </div>
-                  )}
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Enrolled {format(new Date(student.created_at), "dd MMM yyyy")}
+                    </p>
+                    {homepageFields.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {homepageFields.map((field) => {
+                          const val = renderValue(student.values[field.key]);
+                          if (val === "—") return null;
+                          return (
+                            <Badge key={field.key} variant="secondary" className="text-xs font-normal">
+                              {field.label}: {val}
+                            </Badge>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </Link>
+            );
+          })}
         </div>
       )}
 

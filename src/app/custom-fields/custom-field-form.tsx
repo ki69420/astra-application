@@ -17,7 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/components/ui/use-toast";
 
 const FIELD_TYPES = [
-  "TEXT", "TEXTAREA", "NUMBER", "DECIMAL", "DATE", "TIME",
+  "TEXT", "TEXTAREA", "NUMBER", "DECIMAL", "DATE", "TIME", "DATETIME",
   "BOOLEAN", "PHONE", "RADIO", "CHECKBOX", "FILE", "IMAGE",
 ] as const;
 
@@ -140,7 +140,7 @@ export function CustomFieldForm({ defaultValues, fieldId }: CustomFieldFormProps
               )}
             />
             <Label htmlFor="show_in_homepage" className="text-sm leading-snug">
-              Show this field in the student listing
+              Show this in Homepage
             </Label>
           </div>
         </CardContent>

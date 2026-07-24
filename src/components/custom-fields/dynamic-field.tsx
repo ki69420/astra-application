@@ -21,10 +21,10 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { DatePickerInput } from "@/components/custom-fields/date-picker-input";
 import { cn } from "@/lib/utils";
 
 interface DynamicFieldProps {
@@ -221,31 +221,11 @@ export function DynamicField({ field, control, error }: DynamicFieldProps) {
             case "DATETIME":
             case "TIME":
               return (
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !f.value && "text-muted-foreground",
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {f.value ? (
-                        format(new Date(f.value), "PPP")
-                      ) : (
-                        <span>Pick a date</span>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={f.value ? new Date(f.value) : undefined}
-                      onSelect={(date) => f.onChange(date?.toISOString())}
-                    />
-                  </PopoverContent>
-                </Popover>
+                <DatePickerInput
+                  id={field.key}
+                  value={f.value}
+                  onChange={f.onChange}
+                />
               );
 
             case "FILE":

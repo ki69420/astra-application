@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { Button } from "@/components/ui/button";
+import { NavButton } from "@/components/ui/nav-button";
 import { Plus } from "lucide-react";
 import { CustomFieldsTable } from "./custom-fields-table";
 
@@ -19,12 +19,9 @@ export default async function CustomFieldsPage() {
           <h1 className="text-lg font-bold leading-tight">Custom Fields</h1>
           <p className="text-xs text-muted-foreground">{fields.length} fields defined</p>
         </div>
-        <Button size="sm" asChild>
-          <Link href="/custom-fields/new">
-            <Plus className="h-4 w-4 mr-1" />
-            Add
-          </Link>
-        </Button>
+        <NavButton href="/custom-fields/new" icon={Plus}>
+          Add
+        </NavButton>
       </header>
 
       <div className="px-4 py-4">
