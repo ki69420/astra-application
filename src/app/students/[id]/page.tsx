@@ -86,7 +86,8 @@ export default async function StudentDetailPage({
             </p>
           </div>
         </div>
-        <NavButton href={`/students/${student.id}/edit`} icon={Pencil}>
+        <NavButton href={`/students/${student.id}/edit`}>
+          <Pencil className="h-4 w-4 mr-1" />
           Edit
         </NavButton>
       </header>

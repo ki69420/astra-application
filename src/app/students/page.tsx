@@ -51,7 +51,8 @@ export default async function StudentsPage() {
           <h1 className="text-lg font-bold leading-tight">Students</h1>
           <p className="text-xs text-muted-foreground">{students.length} enrolled</p>
         </div>
-        <NavButton href="/students/new" icon={Plus}>
+        <NavButton href="/students/new">
+          <Plus className="h-4 w-4 mr-1" />
           Add
         </NavButton>
       </header>

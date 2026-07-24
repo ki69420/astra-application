@@ -19,7 +19,8 @@ export default async function CustomFieldsPage() {
           <h1 className="text-lg font-bold leading-tight">Custom Fields</h1>
           <p className="text-xs text-muted-foreground">{fields.length} fields defined</p>
         </div>
-        <NavButton href="/custom-fields/new" icon={Plus}>
+        <NavButton href="/custom-fields/new">
+          <Plus className="h-4 w-4 mr-1" />
           Add
         </NavButton>
       </header>

@@ -6,14 +6,12 @@ import { Button, type ButtonProps } from "@/components/ui/button";
 
 interface NavButtonProps extends ButtonProps {
   href: string;
-  icon?: React.ComponentType<{ className?: string }>;
   loadingText?: string;
   children: React.ReactNode;
 }
 
 export function NavButton({
   href,
-  icon: Icon,
   loadingText,
   children,
   className,
@@ -44,14 +42,11 @@ export function NavButton({
     >
       {isLoading ? (
         <>
-          <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+          <Loader2 className="h-4 w-4 mr-1 animate-spin shrink-0" />
           {loadingText ?? children}
         </>
       ) : (
-        <>
-          {Icon && <Icon className="h-4 w-4 mr-1 shrink-0" />}
-          {children}
-        </>
+        children
       )}
     </Button>
   );

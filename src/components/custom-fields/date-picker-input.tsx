@@ -1,15 +1,7 @@
 "use client";
 import * as React from "react";
 import { format, parse, isValid } from "date-fns";
-import { CalendarIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
 
 interface DatePickerInputProps {
   id?: string;
@@ -20,28 +12,23 @@ interface DatePickerInputProps {
 
 function parseFlexibleDate(input: string): Date | null {
   const trimmed = input.trim();
-  if (!trimmed) return null;
-
-  const direct = new Date(trimmed);
-  if (!isNaN(direct.getTime()) && direct.getFullYear() > 1900 && direct.getFullYear() < 2100) {
-    return direct;
-  }
+  if (!trimmed || trimmed.length < 8) return null;
 
   const formats = [
-    "yyyy-MM-dd",
+    "dd-MM-yyyy",
     "dd/MM/yyyy",
+    "yyyy-MM-dd",
     "MM/dd/yyyy",
     "yyyy/MM/dd",
-    "dd-MM-yyyy",
-    "MM-dd-yyyy",
-    "d MMMM yyyy",
-    "MMM d yyyy",
+    "dd-MM-yy",
+    "dd/MM/yy",
+    "ddMMyyyy",
   ];
 
   for (const fmt of formats) {
     try {
       const d = parse(trimmed, fmt, new Date());
-      if (isValid(d) && d.getFullYear() > 1900 && d.getFullYear() < 2100) {
+      if (isValid(d) && d.getFullYear() >= 1900 && d.getFullYear() <= 2100) {
         return d;
       }
     } catch {
@@ -56,24 +43,26 @@ export function DatePickerInput({
   id,
   value,
   onChange,
-  placeholder = "YYYY-MM-DD or pick date",
+  placeholder = "DD-MM-YYYY (e.g. 24-07-2026)",
 }: DatePickerInputProps) {
+  const inputRef = React.useRef<HTMLInputElement>(null);
   const [inputText, setInputText] = React.useState<string>(() => {
     if (!value) return "";
     const d = new Date(value);
-    return isValid(d) ? format(d, "yyyy-MM-dd") : "";
+    return isValid(d) ? format(d, "dd-MM-yyyy") : "";
   });
-  const [isOpen, setIsOpen] = React.useState(false);
 
-  // Sync internal input string when external value changes
+  // Sync internal text ONLY when the input is NOT focused by the user
   React.useEffect(() => {
+    if (document.activeElement === inputRef.current) return;
+
     if (!value) {
       setInputText("");
       return;
     }
     const d = new Date(value);
     if (isValid(d)) {
-      setInputText(format(d, "yyyy-MM-dd"));
+      setInputText(format(d, "dd-MM-yyyy"));
     }
   }, [value]);
 
@@ -99,58 +88,21 @@ export function DatePickerInput({
     }
     const parsed = parseFlexibleDate(inputText);
     if (parsed) {
-      setInputText(format(parsed, "yyyy-MM-dd"));
+      setInputText(format(parsed, "dd-MM-yyyy"));
       onChange(parsed.toISOString());
     }
   };
 
-  const selectedDate = React.useMemo(() => {
-    if (!value) return undefined;
-    const d = new Date(value);
-    return isValid(d) ? d : undefined;
-  }, [value]);
-
   return (
-    <div className="relative flex items-center w-full">
-      <Input
-        id={id}
-        type="text"
-        placeholder={placeholder}
-        value={inputText}
-        onChange={handleInputChange}
-        onBlur={handleInputBlur}
-        className="pr-10 h-11"
-      />
-      <Popover open={isOpen} onOpenChange={setIsOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="absolute right-0 top-0 bottom-0 h-full px-3 text-muted-foreground hover:text-foreground"
-            aria-label="Pick date from calendar"
-          >
-            <CalendarIcon className="h-4 w-4" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="end">
-          <Calendar
-            mode="single"
-            selected={selectedDate}
-            onSelect={(date) => {
-              if (date) {
-                const iso = date.toISOString();
-                setInputText(format(date, "yyyy-MM-dd"));
-                onChange(iso);
-              } else {
-                setInputText("");
-                onChange(undefined);
-              }
-              setIsOpen(false);
-            }}
-          />
-        </PopoverContent>
-      </Popover>
-    </div>
+    <Input
+      ref={inputRef}
+      id={id}
+      type="text"
+      placeholder={placeholder}
+      value={inputText}
+      onChange={handleInputChange}
+      onBlur={handleInputBlur}
+      className="h-11"
+    />
   );
 }
