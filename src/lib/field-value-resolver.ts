@@ -48,29 +48,46 @@ export function resolveTypedValue(
     case "SELECT":
     case "RADIO":
       return { ...empty, value_text: String(raw) };
+
     case "NUMBER":
       return { ...empty, value_number: parseInt(String(raw), 10) };
+
     case "DECIMAL":
       return { ...empty, value_decimal: parseFloat(String(raw)) };
+
     case "BOOLEAN":
+      return {
+        ...empty,
+        value_boolean: typeof raw === "boolean" ? raw : raw === "true" || raw === true,
+      };
+
     case "CHECKBOX":
-      return { ...empty, value_boolean: Boolean(raw) };
+    case "MULTI_SELECT": {
+      const arr = Array.isArray(raw)
+        ? raw.map(String)
+        : typeof raw === "string" && raw.trim()
+          ? [raw.trim()]
+          : [];
+      return {
+        ...empty,
+        value_json: arr.length > 0 ? (arr as Prisma.InputJsonValue) : Prisma.JsonNull,
+      };
+    }
+
     case "DATE":
       return { ...empty, value_date: new Date(String(raw)) };
+
     case "DATETIME":
     case "TIME":
       return { ...empty, value_datetime: new Date(String(raw)) };
-    case "MULTI_SELECT":
-      return {
-        ...empty,
-        value_json: (Array.isArray(raw) ? raw : [raw]) as Prisma.InputJsonValue,
-      };
+
     case "FILE":
     case "IMAGE":
       if (typeof raw === "string" && raw.trim()) {
         return { ...empty, document_id: raw.trim() };
       }
       return empty;
+
     default:
       return { ...empty, value_text: String(raw) };
   }

@@ -8,6 +8,51 @@ import { StudentForm } from "../../student-form";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+function extractCFVValue(cfv: {
+  field: { field_type: string };
+  value_text: string | null;
+  value_number: number | null;
+  value_decimal: unknown;
+  value_boolean: boolean | null;
+  value_date: Date | null;
+  value_datetime: Date | null;
+  value_json: unknown;
+  document_id: string | null;
+}) {
+  const { field_type } = cfv.field;
+  switch (field_type) {
+    case "BOOLEAN":
+      return cfv.value_boolean;
+    case "CHECKBOX":
+    case "MULTI_SELECT":
+      if (Array.isArray(cfv.value_json)) return cfv.value_json;
+      if (typeof cfv.value_json === "string") {
+        try {
+          const parsed = JSON.parse(cfv.value_json);
+          if (Array.isArray(parsed)) return parsed;
+        } catch {
+          return cfv.value_json.split(",").map((s) => s.trim()).filter(Boolean);
+        }
+      }
+      if (cfv.value_text) return [cfv.value_text];
+      return [];
+    case "NUMBER":
+      return cfv.value_number;
+    case "DECIMAL":
+      return cfv.value_decimal != null ? Number(cfv.value_decimal) : null;
+    case "DATE":
+      return cfv.value_date ? cfv.value_date.toISOString() : null;
+    case "DATETIME":
+    case "TIME":
+      return cfv.value_datetime ? cfv.value_datetime.toISOString() : null;
+    case "FILE":
+    case "IMAGE":
+      return cfv.document_id;
+    default:
+      return cfv.value_text ?? "";
+  }
+}
+
 export default async function EditStudentPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
@@ -26,10 +71,7 @@ export default async function EditStudentPage({ params }: { params: Promise<{ id
 
   const defaultValues: Record<string, unknown> = { name: student.name };
   for (const cfv of student.custom_field_values) {
-    defaultValues[cfv.field.key] =
-      cfv.value_text ?? cfv.value_number ?? cfv.value_decimal ?? cfv.value_boolean ??
-      cfv.value_date?.toISOString() ?? cfv.value_datetime?.toISOString() ??
-      cfv.value_json ?? cfv.document_id ?? "";
+    defaultValues[cfv.field.key] = extractCFVValue(cfv);
   }
 
   return (

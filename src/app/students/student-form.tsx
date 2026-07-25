@@ -8,8 +8,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/components/ui/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 import { useAppStore, type StudentRow } from "@/lib/store/use-app-store";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 type FormData = Record<string, unknown>;
 
@@ -23,6 +34,7 @@ export function StudentForm({ customFields, defaultValues, studentId }: StudentF
   const router = useRouter();
   const optimisticAddStudent = useAppStore((s) => s.optimisticAddStudent);
   const optimisticUpdateStudent = useAppStore((s) => s.optimisticUpdateStudent);
+  const optimisticDeleteStudent = useAppStore((s) => s.optimisticDeleteStudent);
   const checkAndSyncBackground = useAppStore((s) => s.checkAndSyncBackground);
 
   const {
@@ -52,11 +64,13 @@ export function StudentForm({ customFields, defaultValues, studentId }: StudentF
     for (const field of customFields) {
       const rawVal = data[field.key];
       if (rawVal != null && rawVal !== "") {
+        if (Array.isArray(rawVal) && rawVal.length === 0) continue;
         valuesObj[field.key] = {
           value_text: typeof rawVal === "string" ? rawVal : null,
           value_number: typeof rawVal === "number" ? rawVal : null,
           value_boolean: typeof rawVal === "boolean" ? rawVal : null,
           value_date: typeof rawVal === "string" ? rawVal : null,
+          value_json: Array.isArray(rawVal) ? rawVal : null,
           field: { key: field.key, label: field.label, field_type: field.field_type },
         };
       }
@@ -117,6 +131,30 @@ export function StudentForm({ customFields, defaultValues, studentId }: StudentF
     }
   }
 
+  const handleDelete = async () => {
+    if (!studentId) return;
+
+    // 1. INSTANT Optimistic Delete & Redirect
+    optimisticDeleteStudent(studentId);
+    router.push("/students");
+    toast({ title: "Student deleted" });
+
+    // 2. BACKGROUND Async DB Delete
+    try {
+      const res = await fetch(`/api/students/${studentId}`, { method: "DELETE" });
+      if (!res.ok) {
+        toast({ variant: "destructive", title: "Delete error" });
+      }
+      checkAndSyncBackground();
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Background delete error",
+        description: String(err),
+      });
+    }
+  };
+
   const visibleFields = customFields.filter((f) => f.is_active);
 
   return (
@@ -152,13 +190,42 @@ export function StudentForm({ customFields, defaultValues, studentId }: StudentF
         </CardContent>
       </Card>
 
-      <div className="flex gap-3 pt-2">
+      <div className="flex gap-2 pt-2">
         <Button type="submit" disabled={isSubmitting} className="flex-1 h-11">
           {isSubmitting ? (
             <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving...</>
           ) : studentId ? "Update Student" : "Create Student"}
         </Button>
-        <Button type="button" variant="outline" className="h-11 px-6" onClick={() => router.back()}>
+
+        {studentId && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button type="button" variant="destructive" className="h-11 px-4">
+                <Trash2 className="h-4 w-4 mr-1.5" />
+                Delete
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Student</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete this student profile? This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDelete}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Delete Student
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
+
+        <Button type="button" variant="outline" className="h-11 px-5" onClick={() => router.back()}>
           Cancel
         </Button>
       </div>

@@ -2,8 +2,7 @@
 import * as React from "react";
 import { Controller, type Control } from "react-hook-form";
 import type { CustomFieldDefinition } from "@prisma/client";
-import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
+import { ChevronDown, X } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -34,14 +33,278 @@ interface DynamicFieldProps {
   error?: string;
 }
 
+function parseOptions(optionsJson: unknown): string[] {
+  if (!optionsJson) return [];
+  if (Array.isArray(optionsJson)) {
+    return optionsJson.map((o) => String(o)).filter(Boolean);
+  }
+  if (typeof optionsJson === "string") {
+    try {
+      const parsed = JSON.parse(optionsJson);
+      if (Array.isArray(parsed)) {
+        return parsed.map((o) => String(o)).filter(Boolean);
+      }
+    } catch {
+      return optionsJson.split(",").map((s) => s.trim()).filter(Boolean);
+    }
+  }
+  return [];
+}
+
+function BooleanToggleField({
+  value,
+  onChange,
+}: {
+  value: boolean | null | undefined;
+  onChange: (val: boolean | null) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="inline-flex items-center rounded-lg border bg-muted p-1 text-muted-foreground">
+        <button
+          type="button"
+          onClick={() => onChange(true)}
+          className={cn(
+            "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3.5 py-1.5 text-xs font-semibold ring-offset-background transition-all focus-visible:outline-none",
+            value === true
+              ? "bg-primary text-primary-foreground shadow-sm"
+              : "hover:text-foreground"
+          )}
+        >
+          Yes
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange(false)}
+          className={cn(
+            "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3.5 py-1.5 text-xs font-semibold ring-offset-background transition-all focus-visible:outline-none",
+            value === false
+              ? "bg-destructive/90 text-destructive-foreground shadow-sm"
+              : "hover:text-foreground"
+          )}
+        >
+          No
+        </button>
+      </div>
+      {value !== null && value !== undefined && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => onChange(null)}
+          className="h-7 text-xs text-muted-foreground hover:text-foreground px-2"
+        >
+          Clear
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function ExpandableRadioField({
+  field,
+  options,
+  value,
+  onChange,
+}: {
+  field: CustomFieldDefinition;
+  options: string[];
+  value: string | null | undefined;
+  onChange: (val: string | null) => void;
+}) {
+  const selected = typeof value === "string" ? value : value ? String(value) : "";
+  const [isOpen, setIsOpen] = React.useState(!selected);
+
+  return (
+    <div className="border rounded-lg overflow-hidden bg-card transition-all">
+      <div
+        className="flex items-center justify-between p-2.5 px-3 cursor-pointer hover:bg-accent/40 select-none"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <div className="flex items-center gap-2 min-w-0 text-sm">
+          <span className="font-medium">{field.label}:</span>
+          {selected ? (
+            <Badge variant="secondary" className="font-semibold text-xs truncate">
+              {selected}
+            </Badge>
+          ) : (
+            <span className="text-xs text-muted-foreground italic">Not selected</span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          {selected ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                onChange(null);
+              }}
+              className="h-6 px-2 text-[11px] text-muted-foreground hover:text-destructive flex items-center gap-1"
+            >
+              <X className="h-3 w-3" />
+              Deselect
+            </Button>
+          ) : null}
+          <ChevronDown
+            className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", isOpen && "rotate-180")}
+          />
+        </div>
+      </div>
+
+      {isOpen && (
+        <div className="p-2 px-3 border-t bg-muted/20 space-y-0.5">
+          {options.length === 0 ? (
+            <p className="text-xs text-muted-foreground italic py-1">No options available</p>
+          ) : (
+            <RadioGroup
+              value={selected}
+              onValueChange={(val) => {
+                if (val === selected) {
+                  onChange(null);
+                } else {
+                  onChange(val);
+                }
+              }}
+              className="gap-0.5"
+            >
+              {options.map((opt) => (
+                <label
+                  key={opt}
+                  htmlFor={`${field.key}-${opt}`}
+                  className="flex items-center gap-2 py-1 px-1.5 rounded hover:bg-accent/50 cursor-pointer select-none text-sm font-normal"
+                >
+                  <RadioGroupItem value={opt} id={`${field.key}-${opt}`} />
+                  <span className="flex-1">{opt}</span>
+                </label>
+              ))}
+            </RadioGroup>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ExpandableCheckboxField({
+  field,
+  options,
+  value,
+  onChange,
+}: {
+  field: CustomFieldDefinition;
+  options: string[];
+  value: string[] | string | null | undefined;
+  onChange: (val: string[]) => void;
+}) {
+  const selected: string[] = React.useMemo(() => {
+    if (Array.isArray(value)) return value.map(String);
+    if (typeof value === "string" && value.trim()) {
+      try {
+        const parsed = JSON.parse(value);
+        if (Array.isArray(parsed)) return parsed.map(String);
+      } catch {
+        return value.split(",").map((s) => s.trim()).filter(Boolean);
+      }
+      return [value];
+    }
+    return [];
+  }, [value]);
+
+  const [isOpen, setIsOpen] = React.useState(selected.length === 0);
+
+  const handleToggleOption = (opt: string) => {
+    const isChecked = selected.includes(opt);
+    const next = isChecked
+      ? selected.filter((v) => v !== opt)
+      : [...selected, opt];
+    onChange(next);
+  };
+
+  return (
+    <div className="border rounded-lg overflow-hidden bg-card transition-all">
+      <div
+        className="flex items-center justify-between p-2.5 px-3 cursor-pointer hover:bg-accent/40 select-none"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <div className="flex items-center gap-2 min-w-0 text-sm flex-wrap">
+          <span className="font-medium">{field.label}:</span>
+          {selected.length > 0 ? (
+            <div className="flex flex-wrap gap-1">
+              {selected.map((val) => (
+                <Badge key={val} variant="secondary" className="font-semibold text-xs">
+                  {val}
+                </Badge>
+              ))}
+            </div>
+          ) : (
+            <span className="text-xs text-muted-foreground italic">Not selected</span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          {selected.length > 0 ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                onChange([]);
+              }}
+              className="h-6 px-2 text-[11px] text-muted-foreground hover:text-destructive flex items-center gap-1"
+            >
+              <X className="h-3 w-3" />
+              Deselect All
+            </Button>
+          ) : null}
+          <ChevronDown
+            className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", isOpen && "rotate-180")}
+          />
+        </div>
+      </div>
+
+      {isOpen && (
+        <div className="p-2 px-3 border-t bg-muted/20 space-y-0.5">
+          {options.length === 0 ? (
+            <p className="text-xs text-muted-foreground italic py-1">No options available</p>
+          ) : (
+            options.map((opt) => {
+              const isChecked = selected.includes(opt);
+              return (
+                <label
+                  key={opt}
+                  htmlFor={`${field.key}-${opt}`}
+                  className="flex items-center gap-2 py-1 px-1.5 rounded hover:bg-accent/50 cursor-pointer select-none text-sm font-normal"
+                >
+                  <Checkbox
+                    id={`${field.key}-${opt}`}
+                    checked={isChecked}
+                    onCheckedChange={() => handleToggleOption(opt)}
+                  />
+                  <span className="flex-1">{opt}</span>
+                </label>
+              );
+            })
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function DynamicField({ field, control, error }: DynamicFieldProps) {
-  const options = (field.options_json ?? []) as string[];
+  const options = parseOptions(field.options_json);
 
   return (
     <div className="space-y-1.5">
-      <Label htmlFor={field.key}>
-        {field.label}
-      </Label>
+      {field.field_type !== "RADIO" && field.field_type !== "CHECKBOX" && (
+        <Label htmlFor={field.key}>
+          {field.label}
+        </Label>
+      )}
 
       <Controller
         name={field.key}
@@ -93,48 +356,20 @@ export function DynamicField({ field, control, error }: DynamicFieldProps) {
 
             case "BOOLEAN":
               return (
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id={field.key}
-                    checked={!!f.value}
-                    onCheckedChange={f.onChange}
-                  />
-                  <Label htmlFor={field.key} className="font-normal">
-                    {field.label}
-                  </Label>
-                </div>
+                <BooleanToggleField
+                  value={f.value as boolean | null | undefined}
+                  onChange={f.onChange}
+                />
               );
 
             case "CHECKBOX":
               return (
-                <div className="space-y-2">
-                  {options.map((opt) => (
-                    <div key={opt} className="flex items-center gap-2">
-                      <Checkbox
-                        id={`${field.key}-${opt}`}
-                        checked={
-                          Array.isArray(f.value) && f.value.includes(opt)
-                        }
-                        onCheckedChange={(checked) => {
-                          const current: string[] = Array.isArray(f.value)
-                            ? f.value
-                            : [];
-                          f.onChange(
-                            checked
-                              ? [...current, opt]
-                              : current.filter((v) => v !== opt),
-                          );
-                        }}
-                      />
-                      <Label
-                        htmlFor={`${field.key}-${opt}`}
-                        className="font-normal"
-                      >
-                        {opt}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
+                <ExpandableCheckboxField
+                  field={field}
+                  options={options}
+                  value={f.value as string[] | string | null | undefined}
+                  onChange={f.onChange}
+                />
               );
 
             case "SELECT":
@@ -202,19 +437,12 @@ export function DynamicField({ field, control, error }: DynamicFieldProps) {
 
             case "RADIO":
               return (
-                <RadioGroup onValueChange={f.onChange} value={f.value ?? ""}>
-                  {options.map((opt) => (
-                    <div key={opt} className="flex items-center gap-2">
-                      <RadioGroupItem value={opt} id={`${field.key}-${opt}`} />
-                      <Label
-                        htmlFor={`${field.key}-${opt}`}
-                        className="font-normal"
-                      >
-                        {opt}
-                      </Label>
-                    </div>
-                  ))}
-                </RadioGroup>
+                <ExpandableRadioField
+                  field={field}
+                  options={options}
+                  value={f.value as string | null | undefined}
+                  onChange={f.onChange}
+                />
               );
 
             case "DATE":

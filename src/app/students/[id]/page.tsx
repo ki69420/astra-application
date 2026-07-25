@@ -71,9 +71,32 @@ export default async function StudentDetailPage({
 
   if (!student) notFound();
 
-  const customValues = [...(student.custom_field_values as CFV[])].sort(
-    (a, b) => (a.field.display_order ?? 0) - (b.field.display_order ?? 0) || a.field.label.localeCompare(b.field.label)
-  );
+  function hasDisplayableValue(cfv: CFV): boolean {
+    if (cfv.value_boolean !== null) {
+      return cfv.value_boolean === true;
+    }
+    if (cfv.value_text !== null) {
+      return cfv.value_text.trim() !== "";
+    }
+    if (cfv.value_number !== null) return true;
+    if (cfv.value_decimal !== null) return true;
+    if (cfv.value_date !== null) return true;
+    if (cfv.value_datetime !== null) return true;
+    if (cfv.value_json !== null) {
+      if (Array.isArray(cfv.value_json)) return cfv.value_json.length > 0;
+      return true;
+    }
+    if (cfv.document_id) return true;
+    return false;
+  }
+
+  const customValues = [...(student.custom_field_values as CFV[])]
+    .filter(hasDisplayableValue)
+    .sort(
+      (a, b) =>
+        (a.field.display_order ?? 0) - (b.field.display_order ?? 0) ||
+        a.field.label.localeCompare(b.field.label),
+    );
 
   return (
     <div>

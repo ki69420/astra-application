@@ -52,26 +52,26 @@ export async function PATCH(
 
   if (Object.keys(customData).length > 0) {
     const fieldMap = new Map(customFields.map((f) => [f.key, f]));
-    await Promise.all(
-      Object.entries(customData)
-        .filter(
-          ([, value]) => value !== undefined && value !== null && value !== "",
-        )
-        .flatMap(([key, value]) => {
-          const field = fieldMap.get(key)!;
-          const typed = resolveTypedValue(field.field_type, value);
-          if (!hasMeaningfulValue(typed)) return [];
-          return [
-            prisma.studentCustomFieldValue.upsert({
-              where: {
-                student_id_field_id: { student_id: id, field_id: field.id },
-              },
-              create: { student_id: id, field_id: field.id, ...typed },
-              update: typed,
-            }),
-          ];
-        }),
-    );
+    for (const [key, value] of Object.entries(customData)) {
+      const field = fieldMap.get(key);
+      if (!field) continue;
+
+      const typed = resolveTypedValue(field.field_type, value);
+
+      if (!hasMeaningfulValue(typed)) {
+        await prisma.studentCustomFieldValue.deleteMany({
+          where: { student_id: id, field_id: field.id },
+        });
+      } else {
+        await prisma.studentCustomFieldValue.upsert({
+          where: {
+            student_id_field_id: { student_id: id, field_id: field.id },
+          },
+          create: { student_id: id, field_id: field.id, ...typed },
+          update: typed,
+        });
+      }
+    }
   }
 
   revalidatePath("/students");
