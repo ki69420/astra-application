@@ -5,14 +5,14 @@ import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { NavButton } from "@/components/ui/nav-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Pencil, ArrowLeft } from "lucide-react";
+import { Pencil, ArrowLeft, Paperclip } from "lucide-react";
 import { FilePreview } from "@/components/documents/file-preview";
 import { formatDisplayDate } from "@/lib/date-utils";
 import { useAppStore } from "@/lib/store/use-app-store";
 
 type CFV = {
   id: string;
-  field: { label: string; field_type: string; display_order: number };
+  field: { key: string; label: string; field_type: string; display_order: number };
   value_text: string | null;
   value_number: number | null;
   value_decimal: unknown;
@@ -80,9 +80,9 @@ export function StudentDetailView({
   initialStudent: StudentDetailData;
 }) {
   const storeStudents = useAppStore((s) => s.students);
+  const storeCustomFields = useAppStore((s) => s.customFields);
   const isInitialized = useAppStore((s) => s.isInitialized);
 
-  // Look up student in Zustand store for instant client rendering
   const storeStudent = isInitialized
     ? storeStudents.find((s) => s.id === studentId)
     : null;
@@ -90,14 +90,23 @@ export function StudentDetailView({
   const studentName = storeStudent ? storeStudent.name : initialStudent.name;
   const createdAt = storeStudent ? storeStudent.created_at : initialStudent.created_at;
 
+  const orderMap = React.useMemo(() => {
+    const map = new Map<string, number>();
+    for (const f of storeCustomFields) {
+      map.set(f.key, f.display_order ?? 999);
+    }
+    return map;
+  }, [storeCustomFields]);
+
   const cfvList: CFV[] = React.useMemo(() => {
     if (storeStudent && storeStudent.values) {
       return Object.values(storeStudent.values).map((v) => ({
         id: v.field.key,
         field: {
+          key: v.field.key,
           label: v.field.label,
           field_type: v.field.field_type,
-          display_order: 0,
+          display_order: orderMap.get(v.field.key) ?? 999,
         },
         value_text: v.value_text ?? null,
         value_number: v.value_number ?? null,
@@ -109,16 +118,37 @@ export function StudentDetailView({
         document_id: v.document_id ?? null,
       }));
     }
-    return initialStudent.custom_field_values;
-  }, [storeStudent, initialStudent]);
+    return initialStudent.custom_field_values.map((v) => ({
+      ...v,
+      field: {
+        ...v.field,
+        key: v.field.key || v.id,
+        display_order: orderMap.get(v.field.key) ?? v.field.display_order ?? 999,
+      },
+    }));
+  }, [storeStudent, initialStudent, orderMap]);
 
-  const customValues = cfvList
-    .filter(hasDisplayableValue)
-    .sort(
-      (a, b) =>
-        (a.field.display_order ?? 0) - (b.field.display_order ?? 0) ||
-        a.field.label.localeCompare(b.field.label),
+  const allDisplayable = React.useMemo(() => {
+    return cfvList
+      .filter(hasDisplayableValue)
+      .sort(
+        (a, b) =>
+          (a.field.display_order ?? 999) - (b.field.display_order ?? 999) ||
+          a.field.label.localeCompare(b.field.label),
+      );
+  }, [cfvList]);
+
+  const detailValues = React.useMemo(() => {
+    return allDisplayable.filter(
+      (v) => v.field.field_type !== "FILE" && v.field.field_type !== "IMAGE",
     );
+  }, [allDisplayable]);
+
+  const attachmentValues = React.useMemo(() => {
+    return allDisplayable.filter(
+      (v) => v.field.field_type === "FILE" || v.field.field_type === "IMAGE",
+    );
+  }, [allDisplayable]);
 
   return (
     <div>
@@ -143,6 +173,7 @@ export function StudentDetailView({
       </header>
 
       <div className="px-4 py-4 space-y-4">
+        {/* Basic Info */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
@@ -154,7 +185,8 @@ export function StudentDetailView({
           </CardContent>
         </Card>
 
-        {customValues.length > 0 && (
+        {/* Student Custom Fields Details */}
+        {detailValues.length > 0 && (
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
@@ -162,12 +194,39 @@ export function StudentDetailView({
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {customValues.map((value) => (
+              {detailValues.map((value) => (
                 <Row
                   key={value.id}
                   label={value.field.label}
                   value={displayValue(value)}
                 />
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Attachments Section */}
+        {attachmentValues.length > 0 && (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                <Paperclip className="h-4 w-4 text-primary" />
+                Attachments
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {attachmentValues.map((value) => (
+                <div
+                  key={value.id}
+                  className="flex items-center justify-between gap-4 py-2 border-b last:border-0"
+                >
+                  <span className="text-sm text-muted-foreground shrink-0 font-medium">
+                    {value.field.label}
+                  </span>
+                  <div className="text-right">
+                    {displayValue(value)}
+                  </div>
+                </div>
               ))}
             </CardContent>
           </Card>

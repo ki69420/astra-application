@@ -38,19 +38,12 @@ export async function GET() {
       ]);
 
     const studentIds = students.map((s) => s.id);
-    const allFieldIds = Array.from(
-      new Set([
-        ...homepageFields.map((f) => f.id),
-        ...searchableFields.map((f) => f.id),
-      ]),
-    );
 
     const values =
-      studentIds.length > 0 && allFieldIds.length > 0
+      studentIds.length > 0
         ? await prisma.studentCustomFieldValue.findMany({
             where: {
               student_id: { in: studentIds },
-              field_id: { in: allFieldIds },
             },
             include: { field: true },
           })
