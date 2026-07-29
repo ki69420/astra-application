@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/components/ui/use-toast";
-import { Loader2, Trash2 } from "lucide-react";
+import { Loader2, Trash2, RefreshCw } from "lucide-react";
 import { useAppStore, type StudentRow } from "@/lib/store/use-app-store";
 import {
   AlertDialog,
@@ -32,6 +32,7 @@ interface StudentFormProps {
 
 export function StudentForm({ customFields, defaultValues, studentId }: StudentFormProps) {
   const router = useRouter();
+  const isInitialized = useAppStore((s) => s.isInitialized);
   const optimisticAddStudent = useAppStore((s) => s.optimisticAddStudent);
   const optimisticUpdateStudent = useAppStore((s) => s.optimisticUpdateStudent);
   const optimisticDeleteStudent = useAppStore((s) => s.optimisticDeleteStudent);
@@ -162,6 +163,13 @@ export function StudentForm({ customFields, defaultValues, studentId }: StudentF
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 px-4 py-4">
+      {!isInitialized && (
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/60 border text-xs text-muted-foreground">
+          <RefreshCw className="h-3.5 w-3.5 animate-spin text-primary shrink-0" />
+          <span>If any custom fields are missing, please wait a moment — initial data is downloading in the background.</span>
+        </div>
+      )}
+
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Student Details</CardTitle>

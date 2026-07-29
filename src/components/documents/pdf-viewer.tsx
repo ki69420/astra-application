@@ -18,6 +18,11 @@ export function PdfViewer({ url }: PdfViewerProps) {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const activeRenderTaskRef = React.useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const loadingTaskRef = React.useRef<any>(null);
+
   React.useEffect(() => {
     let isMounted = true;
 
@@ -42,16 +47,18 @@ export function PdfViewer({ url }: PdfViewerProps) {
         window.pdfjsLib.GlobalWorkerOptions.workerSrc =
           "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
-        const loadingTask = window.pdfjsLib.getDocument({ url });
-        const pdf = await loadingTask.promise;
+        loadingTaskRef.current = window.pdfjsLib.getDocument({ url });
+        const pdf = await loadingTaskRef.current.promise;
 
         if (!isMounted || !containerRef.current) return;
 
         containerRef.current.innerHTML = "";
 
         for (let i = 1; i <= pdf.numPages; i++) {
+          if (!isMounted) break;
+
           const page = await pdf.getPage(i);
-          if (!isMounted || !containerRef.current) return;
+          if (!isMounted || !containerRef.current) break;
 
           // Scale for mobile responsiveness
           const containerWidth = containerRef.current.clientWidth || 320;
@@ -67,16 +74,23 @@ export function PdfViewer({ url }: PdfViewerProps) {
           canvas.width = viewport.width;
 
           if (context) {
-            await page.render({ canvasContext: context, viewport }).promise;
+            activeRenderTaskRef.current = page.render({ canvasContext: context, viewport });
+            await activeRenderTaskRef.current.promise;
           }
 
-          if (containerRef.current) {
+          if (containerRef.current && isMounted) {
             containerRef.current.appendChild(canvas);
           }
+
+          // Yield main thread between pages to keep UI touch events (like close 'X') instant!
+          await new Promise((resolve) => setTimeout(resolve, 0));
         }
 
         if (isMounted) setLoading(false);
       } catch (err) {
+        if ((err as Error)?.name === "RenderingCancelledException") {
+          return;
+        }
         if (isMounted) {
           setLoading(false);
           setError("Unable to render PDF preview");
@@ -88,6 +102,13 @@ export function PdfViewer({ url }: PdfViewerProps) {
 
     return () => {
       isMounted = false;
+      // Immediately cancel active render tasks and release main thread on modal close ('X')
+      if (activeRenderTaskRef.current) {
+        activeRenderTaskRef.current.cancel();
+      }
+      if (loadingTaskRef.current) {
+        loadingTaskRef.current.destroy();
+      }
     };
   }, [url]);
 
