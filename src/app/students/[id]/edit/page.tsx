@@ -8,6 +8,8 @@ import { StudentForm } from "../../student-form";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+import { formatToSlashDate } from "@/lib/date-utils";
+
 function extractCFVValue(cfv: {
   field: { field_type: string };
   value_text: string | null;
@@ -41,7 +43,7 @@ function extractCFVValue(cfv: {
     case "DECIMAL":
       return cfv.value_decimal != null ? Number(cfv.value_decimal) : null;
     case "DATE":
-      return cfv.value_date ? cfv.value_date.toISOString() : null;
+      return cfv.value_date ? formatToSlashDate(cfv.value_date) : null;
     case "DATETIME":
     case "TIME":
       return cfv.value_datetime ? cfv.value_datetime.toISOString() : null;

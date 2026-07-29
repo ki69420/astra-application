@@ -57,13 +57,15 @@ type StudentRow = {
   >;
 };
 
+import { formatDisplayDate } from "@/lib/date-utils";
+
 function renderValue(value: StudentRow["values"][string] | undefined) {
   if (!value) return "—";
   if (value.value_text != null) return value.value_text;
   if (value.value_number != null) return String(value.value_number);
   if (value.value_decimal != null) return String(value.value_decimal);
   if (value.value_boolean != null) return value.value_boolean ? "Yes" : "No";
-  if (value.value_date != null) return format(new Date(value.value_date), "dd MMM yyyy");
+  if (value.value_date != null) return formatDisplayDate(value.value_date);
   if (value.value_datetime != null) return format(new Date(value.value_datetime), "dd MMM yyyy HH:mm");
   if (value.value_json != null)
     return Array.isArray(value.value_json) ? value.value_json.join(", ") : String(value.value_json);

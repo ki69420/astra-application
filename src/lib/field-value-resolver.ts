@@ -74,8 +74,23 @@ export function resolveTypedValue(
       };
     }
 
-    case "DATE":
-      return { ...empty, value_date: new Date(String(raw)) };
+    case "DATE": {
+      const str = String(raw).trim();
+      const d = new Date(str);
+      if (isNaN(d.getTime())) return empty;
+
+      const digits = str.replace(/\D/g, "");
+      if (digits.length === 8) {
+        const day = parseInt(digits.slice(0, 2), 10);
+        const month = parseInt(digits.slice(2, 4), 10);
+        const year = parseInt(digits.slice(4, 8), 10);
+        if (month >= 1 && month <= 12 && day >= 1 && day <= 31 && year >= 1900) {
+          return { ...empty, value_date: new Date(Date.UTC(year, month - 1, day, 12, 0, 0)) };
+        }
+      }
+
+      return { ...empty, value_date: d };
+    }
 
     case "DATETIME":
     case "TIME":

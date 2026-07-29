@@ -1,6 +1,6 @@
 "use client";
 import * as React from "react";
-import { Eye, Download, FileText, Image as ImageIcon, ExternalLink } from "lucide-react";
+import { Eye, Download, FileText, Image as ImageIcon, ExternalLink, Share2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -9,6 +9,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { PdfViewer } from "./pdf-viewer";
 
 interface FilePreviewProps {
   documentId: string;
@@ -18,8 +19,57 @@ interface FilePreviewProps {
 
 export function FilePreview({ documentId, fileName = "Document", isImage = false }: FilePreviewProps) {
   const [isOpen, setIsOpen] = React.useState(false);
+  const [isDownloading, setIsDownloading] = React.useState(false);
   const viewUrl = `/api/documents/${documentId}/view`;
   const downloadUrl = `/api/documents/${documentId}/download`;
+
+  const handleDownload = async () => {
+    try {
+      setIsDownloading(true);
+      const res = await fetch(downloadUrl);
+      if (!res.ok) throw new Error("Fetch failed");
+      const blob = await res.blob();
+
+      const mimeType = isImage ? (blob.type || "image/jpeg") : (blob.type || "application/pdf");
+      let finalFileName = fileName;
+      if (!finalFileName.includes(".")) {
+        finalFileName += isImage ? ".jpg" : ".pdf";
+      }
+
+      const file = new File([blob], finalFileName, { type: mimeType });
+
+      // Web Share API for iOS and Android PWAs (prevents PWA webview lock-up!)
+      if (
+        typeof navigator !== "undefined" &&
+        navigator.canShare &&
+        navigator.canShare({ files: [file] }) &&
+        /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+      ) {
+        await navigator.share({
+          files: [file],
+          title: finalFileName,
+        });
+        setIsDownloading(false);
+        return;
+      }
+
+      // Fallback for Desktop browsers or browsers without Web Share file support
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = finalFileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+      setIsDownloading(false);
+    } catch (err) {
+      setIsDownloading(false);
+      if ((err as Error).name !== "AbortError") {
+        window.open(downloadUrl, "_blank");
+      }
+    }
+  };
 
   return (
     <div className="inline-flex items-center gap-2 flex-wrap">
@@ -55,7 +105,7 @@ export function FilePreview({ documentId, fileName = "Document", isImage = false
 
         <DialogContent className="max-w-3xl w-[95vw] h-[85vh] flex flex-col p-4">
           <DialogHeader className="flex flex-row items-center justify-between gap-2 border-b pb-3">
-            <DialogTitle className="text-sm font-semibold truncate flex items-center gap-2">
+            <DialogTitle className="text-sm font-semibold truncate flex items-center gap-2 min-w-0">
               <Eye className="h-4 w-4 text-primary shrink-0" />
               <span className="truncate">{fileName}</span>
             </DialogTitle>
@@ -66,11 +116,18 @@ export function FilePreview({ documentId, fileName = "Document", isImage = false
                   Open in Tab
                 </a>
               </Button>
-              <Button size="sm" className="h-8 text-xs gap-1" asChild>
-                <a href={downloadUrl} download>
-                  <Download className="h-3.5 w-3.5" />
-                  Download
-                </a>
+              <Button
+                size="sm"
+                onClick={handleDownload}
+                disabled={isDownloading}
+                className="h-8 text-xs gap-1"
+              >
+                {isDownloading ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Share2 className="h-3.5 w-3.5" />
+                )}
+                Save / Share
               </Button>
             </div>
           </DialogHeader>
@@ -84,21 +141,25 @@ export function FilePreview({ documentId, fileName = "Document", isImage = false
                 className="max-h-full max-w-full object-contain rounded"
               />
             ) : (
-              <iframe
-                src={viewUrl}
-                title={fileName}
-                className="w-full h-full border-0 rounded"
-              />
+              <PdfViewer url={viewUrl} />
             )}
           </div>
         </DialogContent>
       </Dialog>
 
-      <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs text-muted-foreground hover:text-foreground" asChild>
-        <a href={downloadUrl} download>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={handleDownload}
+        disabled={isDownloading}
+        className="h-8 gap-1 text-xs text-muted-foreground hover:text-foreground"
+      >
+        {isDownloading ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : (
           <Download className="h-3.5 w-3.5" />
-          Download
-        </a>
+        )}
+        Save
       </Button>
     </div>
   );

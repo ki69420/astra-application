@@ -1,11 +1,11 @@
 "use client";
 import * as React from "react";
 import { format } from "date-fns";
-import { Download, FileText } from "lucide-react";
+import { FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { useAppStore, type DocumentRow } from "@/lib/store/use-app-store";
+import { FilePreview } from "@/components/documents/file-preview";
 
 function formatBytes(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -39,34 +39,40 @@ export function DocumentsList({ initialDocuments }: { initialDocuments: Document
           </div>
         ) : (
           <div className="space-y-2">
-            {displayDocuments.map((doc) => (
-              <Card key={doc.id} className="overflow-hidden">
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                    <FileText className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{doc.original_name}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge variant="outline" className="text-xs font-mono">
-                        {doc.extension.toUpperCase()}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">
-                        {formatBytes(doc.size)}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {format(new Date(doc.uploaded_at), "dd MMM yyyy")}
-                      </span>
+            {displayDocuments.map((doc) => {
+              const isImage = ["jpg", "jpeg", "png", "webp", "gif", "svg"].includes(
+                doc.extension?.toLowerCase() || ""
+              );
+
+              return (
+                <Card key={doc.id} className="overflow-hidden">
+                  <CardContent className="p-4 flex items-center gap-3 flex-wrap sm:flex-nowrap">
+                    <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                      <FileText className="h-5 w-5 text-muted-foreground" />
                     </div>
-                  </div>
-                  <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" asChild>
-                    <a href={`/api/documents/${doc.id}/download`} download>
-                      <Download className="h-4 w-4" />
-                    </a>
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{doc.original_name}</p>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <Badge variant="outline" className="text-xs font-mono">
+                          {doc.extension.toUpperCase()}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          {formatBytes(doc.size)}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {format(new Date(doc.uploaded_at), "dd MMM yyyy")}
+                        </span>
+                      </div>
+                    </div>
+                    <FilePreview
+                      documentId={doc.id}
+                      fileName={doc.original_name}
+                      isImage={isImage}
+                    />
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
       </div>
