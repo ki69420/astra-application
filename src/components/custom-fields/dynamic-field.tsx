@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { DatePickerInput } from "@/components/custom-fields/date-picker-input";
+import { FilePreview } from "@/components/documents/file-preview";
 import { cn } from "@/lib/utils";
 
 interface DynamicFieldProps {
@@ -113,7 +114,7 @@ function ExpandableRadioField({
   onChange: (val: string | null) => void;
 }) {
   const selected = typeof value === "string" ? value : value ? String(value) : "";
-  const [isOpen, setIsOpen] = React.useState(!selected);
+  const [isOpen, setIsOpen] = React.useState(false);
 
   return (
     <div className="border rounded-lg overflow-hidden bg-card transition-all">
@@ -213,7 +214,7 @@ function ExpandableCheckboxField({
     return [];
   }, [value]);
 
-  const [isOpen, setIsOpen] = React.useState(selected.length === 0);
+  const [isOpen, setIsOpen] = React.useState(false);
 
   const handleToggleOption = (opt: string) => {
     const isChecked = selected.includes(opt);
@@ -459,19 +460,33 @@ export function DynamicField({ field, control, error }: DynamicFieldProps) {
             case "FILE":
             case "IMAGE":
               return (
-                <Input
-                  id={field.key}
-                  type="file"
-                  accept={
-                    field.field_type === "IMAGE"
-                      ? "image/*"
-                      : ".pdf,.doc,.docx,.txt,.csv,.xls,.xlsx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                  }
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) f.onChange(file);
-                  }}
-                />
+                <div className="space-y-2">
+                  {typeof f.value === "string" && f.value.trim() !== "" ? (
+                    <div className="flex items-center gap-2 flex-wrap p-2 rounded-lg bg-muted/30 border">
+                      <span className="text-xs text-muted-foreground font-medium">
+                        Attached {field.field_type === "IMAGE" ? "Image" : "Document"}:
+                      </span>
+                      <FilePreview
+                        documentId={f.value.trim()}
+                        fileName={field.label}
+                        isImage={field.field_type === "IMAGE"}
+                      />
+                    </div>
+                  ) : null}
+                  <Input
+                    id={field.key}
+                    type="file"
+                    accept={
+                      field.field_type === "IMAGE"
+                        ? "image/*"
+                        : ".pdf,.doc,.docx,.txt,.csv,.xls,.xlsx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    }
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) f.onChange(file);
+                    }}
+                  />
+                </div>
               );
 
             default:

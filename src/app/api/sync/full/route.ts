@@ -6,7 +6,7 @@ export const revalidate = 0;
 
 export async function GET() {
   try {
-    const [students, homepageFields, searchableFields, customFields] =
+    const [students, homepageFields, searchableFields, customFields, documents] =
       await Promise.all([
         prisma.student.findMany({
           orderBy: { created_at: "desc" },
@@ -30,6 +30,10 @@ export async function GET() {
         }),
         prisma.customFieldDefinition.findMany({
           orderBy: [{ display_order: "asc" }, { label: "asc" }],
+        }),
+        prisma.document.findMany({
+          where: { deleted_at: null },
+          orderBy: { uploaded_at: "desc" },
         }),
       ]);
 
@@ -72,6 +76,7 @@ export async function GET() {
       homepageFields,
       searchableFields,
       customFields,
+      documents,
       last_updated_at: new Date().toISOString(),
     });
   } catch (error) {

@@ -35,6 +35,7 @@ export function StudentForm({ customFields, defaultValues, studentId }: StudentF
   const optimisticAddStudent = useAppStore((s) => s.optimisticAddStudent);
   const optimisticUpdateStudent = useAppStore((s) => s.optimisticUpdateStudent);
   const optimisticDeleteStudent = useAppStore((s) => s.optimisticDeleteStudent);
+  const optimisticAddDocument = useAppStore((s) => s.optimisticAddDocument);
   const checkAndSyncBackground = useAppStore((s) => s.checkAndSyncBackground);
 
   const {
@@ -52,7 +53,9 @@ export function StudentForm({ customFields, defaultValues, studentId }: StudentF
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || "File upload failed");
     }
-    return res.json();
+    const doc = await res.json();
+    optimisticAddDocument(doc);
+    return doc;
   }
 
   async function onSubmit(data: FormData) {

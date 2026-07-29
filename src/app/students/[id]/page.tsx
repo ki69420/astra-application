@@ -21,6 +21,8 @@ type CFV = {
   document_id: string | null;
 };
 
+import { FilePreview } from "@/components/documents/file-preview";
+
 function displayValue(cfv: CFV): React.ReactNode {
   if (cfv.value_text !== null) return cfv.value_text;
   if (cfv.value_number !== null) return String(cfv.value_number);
@@ -36,13 +38,11 @@ function displayValue(cfv: CFV): React.ReactNode {
       : String(cfv.value_json);
   if (cfv.document_id)
     return (
-      <a
-        href={`/api/documents/${cfv.document_id}/download`}
-        className="flex items-center gap-1 text-primary hover:underline"
-      >
-        <Download className="h-3 w-3" />
-        Download {cfv.field.field_type === "IMAGE" ? "Image" : "File"}
-      </a>
+      <FilePreview
+        documentId={cfv.document_id}
+        fileName={cfv.field.label}
+        isImage={cfv.field.field_type === "IMAGE"}
+      />
     );
   return "—";
 }

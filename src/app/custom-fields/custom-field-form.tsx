@@ -53,7 +53,7 @@ export function CustomFieldForm({ defaultValues, fieldId }: CustomFieldFormProps
     watch,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
-    defaultValues: { show_in_homepage: false, is_searchable: true, options: [], ...defaultValues },
+    defaultValues: { show_in_homepage: false, is_searchable: false, options: [], ...defaultValues },
   });
 
   const { fields, append, remove } = useFieldArray({ control, name: "options" });
@@ -61,6 +61,10 @@ export function CustomFieldForm({ defaultValues, fieldId }: CustomFieldFormProps
   const showOptions = OPTION_TYPES.has(fieldType);
 
   async function onSubmit(data: FormData) {
+    const isFileOrImage = data.field_type === "FILE" || data.field_type === "IMAGE";
+    const show_in_homepage = isFileOrImage ? false : Boolean(data.show_in_homepage);
+    const is_searchable = isFileOrImage ? false : Boolean(data.is_searchable);
+
     const options_json = data.options.map((o) => o.value).filter(Boolean);
     const key = data.key?.trim() || data.label.toLowerCase().replace(/\s+/g, "_");
 
@@ -69,8 +73,8 @@ export function CustomFieldForm({ defaultValues, fieldId }: CustomFieldFormProps
       key,
       label: data.label,
       field_type: data.field_type,
-      show_in_homepage: data.show_in_homepage,
-      is_searchable: data.is_searchable,
+      show_in_homepage,
+      is_searchable,
       display_order: 999,
       options_json: options_json.length ? options_json : undefined,
     };
@@ -92,8 +96,8 @@ export function CustomFieldForm({ defaultValues, fieldId }: CustomFieldFormProps
         label: data.label,
         field_type: data.field_type,
         options_json: options_json.length ? options_json : undefined,
-        show_in_homepage: data.show_in_homepage,
-        is_searchable: data.is_searchable,
+        show_in_homepage,
+        is_searchable,
       };
 
       const url = fieldId ? `/api/custom-fields/${fieldId}` : "/api/custom-fields";
@@ -159,41 +163,45 @@ export function CustomFieldForm({ defaultValues, fieldId }: CustomFieldFormProps
             {errors.field_type && <p className="text-xs text-destructive">{errors.field_type.message}</p>}
           </div>
 
-          <div className="flex items-center gap-3 py-1">
-            <Controller
-              name="show_in_homepage"
-              control={control}
-              render={({ field: f }) => (
-                <Checkbox
-                  id="show_in_homepage"
-                  checked={!!f.value}
-                  onCheckedChange={f.onChange}
-                  className="h-5 w-5"
+          {fieldType !== "FILE" && fieldType !== "IMAGE" && (
+            <>
+              <div className="flex items-center gap-3 py-1">
+                <Controller
+                  name="show_in_homepage"
+                  control={control}
+                  render={({ field: f }) => (
+                    <Checkbox
+                      id="show_in_homepage"
+                      checked={!!f.value}
+                      onCheckedChange={f.onChange}
+                      className="h-5 w-5"
+                    />
+                  )}
                 />
-              )}
-            />
-            <Label htmlFor="show_in_homepage" className="text-sm leading-snug cursor-pointer">
-              Show this in Homepage
-            </Label>
-          </div>
+                <Label htmlFor="show_in_homepage" className="text-sm leading-snug cursor-pointer">
+                  Show this in Homepage
+                </Label>
+              </div>
 
-          <div className="flex items-center gap-3 py-1">
-            <Controller
-              name="is_searchable"
-              control={control}
-              render={({ field: f }) => (
-                <Checkbox
-                  id="is_searchable"
-                  checked={!!f.value}
-                  onCheckedChange={f.onChange}
-                  className="h-5 w-5"
+              <div className="flex items-center gap-3 py-1">
+                <Controller
+                  name="is_searchable"
+                  control={control}
+                  render={({ field: f }) => (
+                    <Checkbox
+                      id="is_searchable"
+                      checked={!!f.value}
+                      onCheckedChange={f.onChange}
+                      className="h-5 w-5"
+                    />
+                  )}
                 />
-              )}
-            />
-            <Label htmlFor="is_searchable" className="text-sm leading-snug cursor-pointer">
-              Filterable in Students Page
-            </Label>
-          </div>
+                <Label htmlFor="is_searchable" className="text-sm leading-snug cursor-pointer">
+                  Filterable in Students Page
+                </Label>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 

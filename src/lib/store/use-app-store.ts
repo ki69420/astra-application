@@ -26,6 +26,17 @@ export type CustomField = {
   options_json?: unknown;
 };
 
+export type DocumentRow = {
+  id: string;
+  file_name: string;
+  original_name: string;
+  mime_type: string;
+  extension: string;
+  size: number;
+  uploaded_by: string;
+  uploaded_at: Date | string;
+};
+
 export type StudentRow = {
   id: string;
   name: string;
@@ -52,6 +63,8 @@ interface AppState {
   homepageFields: HomepageField[];
   searchableFields: SearchableField[];
   customFields: CustomField[];
+  documents: DocumentRow[];
+  totalDocumentsCount: number;
   lastSyncedAt: string | null;
   isInitialized: boolean;
 
@@ -61,6 +74,8 @@ interface AppState {
     homepageFields: HomepageField[];
     searchableFields: SearchableField[];
     customFields?: CustomField[];
+    documents?: DocumentRow[];
+    totalDocumentsCount?: number;
   }) => void;
 
   optimisticAddStudent: (student: StudentRow) => void;
@@ -78,6 +93,9 @@ interface AppState {
   ) => void;
   optimisticReorderCustomFields: (fields: CustomField[]) => void;
 
+  optimisticAddDocument: (doc: DocumentRow) => void;
+  optimisticDeleteDocument: (id: string) => void;
+
   checkAndSyncBackground: () => Promise<void>;
 }
 
@@ -87,6 +105,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   homepageFields: [],
   searchableFields: [],
   customFields: [],
+  documents: [],
+  totalDocumentsCount: 0,
   lastSyncedAt: null,
   isInitialized: false,
 
@@ -97,6 +117,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       homepageFields: data.homepageFields,
       searchableFields: data.searchableFields,
       customFields: data.customFields ?? get().customFields,
+      documents: data.documents ?? get().documents,
+      totalDocumentsCount:
+        data.totalDocumentsCount ?? data.documents?.length ?? get().totalDocumentsCount,
       lastSyncedAt: new Date().toISOString(),
       isInitialized: true,
     });
@@ -177,23 +200,44 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ customFields: reordered });
   },
 
+  optimisticAddDocument: (doc) => {
+    set((state) => ({
+      documents: [doc, ...state.documents],
+      totalDocumentsCount: state.totalDocumentsCount + 1,
+    }));
+  },
+
+  optimisticDeleteDocument: (id) => {
+    set((state) => ({
+      documents: state.documents.filter((d) => d.id !== id),
+      totalDocumentsCount: Math.max(0, state.totalDocumentsCount - 1),
+    }));
+  },
+
   checkAndSyncBackground: async () => {
     try {
-      // 1. Light 5ms metadata check
+      // 1. Light 5ms metadata check across all database tables
       const metaRes = await fetch("/api/sync/meta", { cache: "no-store" });
       if (!metaRes.ok) return;
 
       const meta = (await metaRes.json()) as {
         last_updated_at: string;
         total_students: number;
+        total_fields: number;
+        total_documents: number;
       };
       const storeLastSync = get().lastSyncedAt;
 
-      // If server timestamp is newer or student count changed, fetch full sync
       const serverTime = new Date(meta.last_updated_at).getTime();
       const localTime = storeLastSync ? new Date(storeLastSync).getTime() : 0;
 
-      if (serverTime > localTime || meta.total_students !== get().totalEnrolledCount) {
+      // Sync full data if any table timestamp is newer or any row count changed
+      if (
+        serverTime > localTime ||
+        meta.total_students !== get().totalEnrolledCount ||
+        meta.total_fields !== get().customFields.length ||
+        meta.total_documents !== get().totalDocumentsCount
+      ) {
         const fullRes = await fetch("/api/sync/full", { cache: "no-store" });
         if (!fullRes.ok) return;
 
@@ -203,6 +247,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           homepageFields: fullData.homepageFields,
           searchableFields: fullData.searchableFields,
           customFields: fullData.customFields,
+          documents: fullData.documents,
         });
       }
     } catch {
