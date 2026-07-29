@@ -1,28 +1,11 @@
-import { prisma } from "@/lib/prisma";
-import { notFound } from "next/navigation";
+"use client";
+import React from "react";
+import { useParams } from "next/navigation";
 import { EditStudentView } from "./edit-student-view";
 
-export default async function EditStudentPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export default function EditStudentPage() {
+  const params = useParams();
+  const id = (params?.id as string) || "";
 
-  const [student, customFields] = await Promise.all([
-    prisma.student.findFirst({
-      where: { id },
-      include: { custom_field_values: { include: { field: true } } },
-    }),
-    prisma.customFieldDefinition.findMany({
-      where: { is_active: true },
-      orderBy: [{ display_order: "asc" }, { label: "asc" }],
-    }),
-  ]);
-
-  if (!student) notFound();
-
-  return (
-    <EditStudentView
-      studentId={id}
-      initialStudent={student}
-      initialCustomFields={customFields}
-    />
-  );
+  return <EditStudentView studentId={id} />;
 }

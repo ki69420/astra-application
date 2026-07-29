@@ -1,12 +1,11 @@
-import { prisma } from "@/lib/prisma";
-import { notFound } from "next/navigation";
+"use client";
+import React from "react";
+import { useParams } from "next/navigation";
 import { EditCustomFieldView } from "./edit-custom-field-view";
 
-export default async function EditCustomFieldPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const field = await prisma.customFieldDefinition.findFirst({ where: { id } });
+export default function EditCustomFieldPage() {
+  const params = useParams();
+  const id = (params?.id as string) || "";
 
-  if (!field) notFound();
-
-  return <EditCustomFieldView fieldId={id} initialField={field} />;
+  return <EditCustomFieldView fieldId={id} />;
 }

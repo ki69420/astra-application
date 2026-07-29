@@ -5,7 +5,7 @@ import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { NavButton } from "@/components/ui/nav-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Pencil, ArrowLeft, Paperclip } from "lucide-react";
+import { Pencil, ArrowLeft, Paperclip, Loader2 } from "lucide-react";
 import { FilePreview } from "@/components/documents/file-preview";
 import { formatDisplayDate } from "@/lib/date-utils";
 import { useAppStore } from "@/lib/store/use-app-store";
@@ -77,18 +77,40 @@ export function StudentDetailView({
   initialStudent,
 }: {
   studentId: string;
-  initialStudent: StudentDetailData;
+  initialStudent?: StudentDetailData;
 }) {
   const storeStudents = useAppStore((s) => s.students);
   const storeCustomFields = useAppStore((s) => s.customFields);
   const isInitialized = useAppStore((s) => s.isInitialized);
 
+  const [fetchedStudent, setFetchedStudent] = React.useState<StudentDetailData | null>(null);
+  const [loading, setLoading] = React.useState(false);
+
   const storeStudent = isInitialized
     ? storeStudents.find((s) => s.id === studentId)
     : null;
 
-  const studentName = storeStudent ? storeStudent.name : initialStudent.name;
-  const createdAt = storeStudent ? storeStudent.created_at : initialStudent.created_at;
+  const student = storeStudent || initialStudent || fetchedStudent;
+
+  React.useEffect(() => {
+    if (!student && studentId) {
+      setLoading(true);
+      fetch(`/api/students/${studentId}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data) {
+            setFetchedStudent({
+              id: data.id,
+              name: data.name,
+              created_at: data.created_at,
+              custom_field_values: data.custom_field_values || [],
+            });
+          }
+          setLoading(false);
+        })
+        .catch(() => setLoading(false));
+    }
+  }, [student, studentId]);
 
   const orderMap = React.useMemo(() => {
     const map = new Map<string, number>();
@@ -118,15 +140,19 @@ export function StudentDetailView({
         document_id: v.document_id ?? null,
       }));
     }
-    return initialStudent.custom_field_values.map((v) => ({
-      ...v,
-      field: {
-        ...v.field,
-        key: v.field.key || v.id,
-        display_order: orderMap.get(v.field.key) ?? v.field.display_order ?? 999,
-      },
-    }));
-  }, [storeStudent, initialStudent, orderMap]);
+    const fallbackValues = initialStudent?.custom_field_values || fetchedStudent?.custom_field_values;
+    if (fallbackValues) {
+      return fallbackValues.map((v) => ({
+        ...v,
+        field: {
+          ...v.field,
+          key: v.field.key || v.id,
+          display_order: orderMap.get(v.field.key) ?? v.field.display_order ?? 999,
+        },
+      }));
+    }
+    return [];
+  }, [storeStudent, student, orderMap]);
 
   const allDisplayable = React.useMemo(() => {
     return cfvList
@@ -149,6 +175,28 @@ export function StudentDetailView({
       (v) => v.field.field_type === "FILE" || v.field.field_type === "IMAGE",
     );
   }, [allDisplayable]);
+
+  if (!student && loading) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b px-4 py-3 flex items-center gap-2">
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" asChild>
+            <Link href="/students">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <span className="text-base font-bold">Student Profile</span>
+        </header>
+        <div className="flex flex-col items-center justify-center py-24 gap-2">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          <p className="text-xs text-muted-foreground">Loading details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const studentName = student ? student.name : "Student Profile";
+  const createdAt = student ? student.created_at : new Date();
 
   return (
     <div>
@@ -216,14 +264,13 @@ export function StudentDetailView({
             </CardHeader>
             <CardContent className="space-y-3">
               {attachmentValues.map((value) => (
-                <div
-                  key={value.id}
-                  className="flex items-center justify-between gap-4 py-2 border-b last:border-0"
-                >
-                  <span className="text-sm text-muted-foreground shrink-0 font-medium">
-                    {value.field.label}
-                  </span>
-                  <div className="text-right">
+                <div key={value.id} className="py-2.5 border-b last:border-0 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      {value.field.label}
+                    </span>
+                  </div>
+                  <div className="w-full">
                     {displayValue(value)}
                   </div>
                 </div>
