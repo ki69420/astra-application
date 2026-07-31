@@ -1,6 +1,6 @@
 "use client";
 import * as React from "react";
-import { Eye, Download, FileText, Image as ImageIcon, ExternalLink, Share2 } from "lucide-react";
+import { Eye, Download, FileText, Image as ImageIcon, Share2, Loader2, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -10,7 +10,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { PdfViewer } from "./pdf-viewer";
-import { getCachedDocumentBlob, setCachedDocumentBlob } from "@/lib/document-cache";
+import { getCachedOrFetchBlob, triggerLocalDownload } from "@/lib/documents/document-manager";
 
 interface FilePreviewProps {
   documentId: string;
@@ -20,10 +20,9 @@ interface FilePreviewProps {
 
 export function FilePreview({ documentId, fileName = "Document", isImage = false }: FilePreviewProps) {
   const [isOpen, setIsOpen] = React.useState(false);
-  const [activeUrl, setActiveUrl] = React.useState<string>(`/api/documents/${documentId}/view`);
+  const [activeUrl, setActiveUrl] = React.useState<string>("");
   const [cachedBlob, setCachedBlob] = React.useState<Blob | null>(null);
-
-  const downloadUrl = `/api/documents/${documentId}/download`;
+  const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
     let isMounted = true;
@@ -31,30 +30,17 @@ export function FilePreview({ documentId, fileName = "Document", isImage = false
 
     async function loadCachedFile() {
       if (!documentId) return;
+      setLoading(true);
 
-      // 1. Check IndexedDB device storage first
-      const localBlob = await getCachedDocumentBlob(documentId);
-      if (localBlob && isMounted) {
-        setCachedBlob(localBlob);
-        createdUrl = URL.createObjectURL(localBlob);
+      const blob = await getCachedOrFetchBlob(documentId);
+      if (!isMounted) return;
+
+      if (blob && blob.size > 0) {
+        setCachedBlob(blob);
+        createdUrl = URL.createObjectURL(blob);
         setActiveUrl(createdUrl);
-        return;
       }
-
-      // 2. Fetch from server and store into IndexedDB
-      try {
-        const res = await fetch(`/api/documents/${documentId}/view`);
-        if (!res.ok) return;
-        const freshBlob = await res.blob();
-        if (!isMounted) return;
-
-        await setCachedDocumentBlob(documentId, freshBlob);
-        setCachedBlob(freshBlob);
-        createdUrl = URL.createObjectURL(freshBlob);
-        setActiveUrl(createdUrl);
-      } catch {
-        // Fallback to default endpoint if offline fetch fails
-      }
+      setLoading(false);
     }
 
     loadCachedFile();
@@ -65,15 +51,28 @@ export function FilePreview({ documentId, fileName = "Document", isImage = false
     };
   }, [documentId]);
 
+  const handleDownload = async () => {
+    let blob = cachedBlob;
+    if (!blob) {
+      blob = await getCachedOrFetchBlob(documentId);
+      if (blob) setCachedBlob(blob);
+    }
+
+    if (blob) {
+      triggerLocalDownload(blob, fileName);
+    } else {
+      window.open(`/api/documents/${documentId}/download`, "_self");
+    }
+  };
+
   const handleShare = async () => {
     try {
       let blob = cachedBlob;
       if (!blob) {
-        const res = await fetch(downloadUrl);
-        if (!res.ok) return;
-        blob = await res.blob();
-        setCachedDocumentBlob(documentId, blob);
+        blob = await getCachedOrFetchBlob(documentId);
+        if (blob) setCachedBlob(blob);
       }
+      if (!blob) return;
 
       const mimeType = isImage ? (blob.type || "image/jpeg") : (blob.type || "application/pdf");
       let finalFileName = fileName;
@@ -102,14 +101,18 @@ export function FilePreview({ documentId, fileName = "Document", isImage = false
         {isImage && (
           <div
             onClick={() => setIsOpen(true)}
-            className="relative h-12 w-12 rounded-lg overflow-hidden border bg-muted cursor-pointer hover:opacity-90 transition-opacity shrink-0 group"
+            className="relative h-12 w-12 rounded-lg overflow-hidden border bg-muted cursor-pointer hover:opacity-90 transition-opacity shrink-0 group flex items-center justify-center"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={activeUrl}
-              alt={fileName}
-              className="h-full w-full object-cover"
-            />
+            {activeUrl ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={activeUrl}
+                alt={fileName}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <ImageIcon className="h-5 w-5 text-muted-foreground/40" />
+            )}
             <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
               <Eye className="h-3.5 w-3.5 text-white" />
             </div>
@@ -135,37 +138,42 @@ export function FilePreview({ documentId, fileName = "Document", isImage = false
                 <span className="truncate">{fileName}</span>
               </DialogTitle>
               <div className="flex items-center gap-2 mr-6 shrink-0">
-                {/* <Button variant="outline" size="sm" className="h-8 text-xs gap-1" asChild>
-                  <a href={activeUrl} target="_blank" rel="noreferrer">
-                    <ExternalLink className="h-3.5 w-3.5" />
-                    Open in Tab
-                  </a>
-                </Button> */}
                 {canNativeShare && (
                   <Button variant="outline" size="sm" onClick={handleShare} className="h-8 text-xs gap-1">
                     <Share2 className="h-3.5 w-3.5" />
                     Share
                   </Button>
                 )}
-                <Button size="sm" className="h-8 text-xs gap-1" asChild>
-                  <a href={downloadUrl} download={fileName} target="_self">
-                    <Download className="h-3.5 w-3.5" />
-                    Download
-                  </a>
+                <Button size="sm" onClick={handleDownload} className="h-8 text-xs gap-1">
+                  <Download className="h-3.5 w-3.5" />
+                  Download
                 </Button>
               </div>
             </DialogHeader>
 
             <div className="flex-1 w-full h-full min-h-0 bg-muted/30 rounded-lg overflow-hidden flex items-center justify-center p-2 relative">
-              {isImage ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={activeUrl}
-                  alt={fileName}
-                  className="max-h-full max-w-full object-contain rounded"
-                />
+              {loading ? (
+                <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  <span className="text-xs">Loading document...</span>
+                </div>
+              ) : activeUrl ? (
+                isImage ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={activeUrl}
+                    alt={fileName}
+                    className="max-h-full max-w-full object-contain rounded"
+                  />
+                ) : (
+                  <PdfViewer url={activeUrl} />
+                )
               ) : (
-                <PdfViewer url={activeUrl} />
+                <div className="flex flex-col items-center justify-center gap-2 text-center p-6 text-muted-foreground">
+                  <WifiOff className="h-8 w-8 text-muted-foreground/60" />
+                  <p className="text-sm font-semibold">Document not cached for offline view</p>
+                  <p className="text-xs">Connect to the internet to load this document for offline storage.</p>
+                </div>
               )}
             </div>
           </DialogContent>
@@ -173,11 +181,14 @@ export function FilePreview({ documentId, fileName = "Document", isImage = false
       </div>
 
       {/* Right Container: Download Action */}
-      <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs text-muted-foreground hover:text-foreground shrink-0" asChild>
-        <a href={downloadUrl} download={fileName} target="_self">
-          <Download className="h-3.5 w-3.5" />
-          Download
-        </a>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={handleDownload}
+        className="h-8 gap-1 text-xs text-muted-foreground hover:text-foreground shrink-0"
+      >
+        <Download className="h-3.5 w-3.5" />
+        Download
       </Button>
     </div>
   );

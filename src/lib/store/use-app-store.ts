@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import { precacheDocumentBlobs } from "@/lib/documents/document-manager";
 
 export type HomepageField = {
   id: string;
@@ -195,6 +196,22 @@ export const useAppStore = create<AppState>()(
           lastSyncedAt: new Date().toISOString(),
           isInitialized: true,
         });
+
+        // Trigger background binary document precaching into IndexedDB
+        const docIds: string[] = [];
+        for (const s of data.students || []) {
+          if (s.values) {
+            for (const v of Object.values(s.values)) {
+              if (v.document_id) docIds.push(v.document_id);
+            }
+          }
+        }
+        for (const d of data.documents || []) {
+          if (d.id) docIds.push(d.id);
+        }
+        if (docIds.length > 0) {
+          precacheDocumentBlobs(docIds);
+        }
       },
 
       hydrateVault: (data) => {
@@ -204,6 +221,14 @@ export const useAppStore = create<AppState>()(
           vaultItems: data.items,
           vaultGroupItemLinks: data.groupItemLinks,
         });
+
+        const docIds: string[] = [];
+        for (const i of data.items || []) {
+          if (i.document_id) docIds.push(i.document_id);
+        }
+        if (docIds.length > 0) {
+          precacheDocumentBlobs(docIds);
+        }
       },
 
       optimisticAddStudent: (newStudent) => {

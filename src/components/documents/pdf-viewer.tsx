@@ -1,16 +1,14 @@
 "use client";
 import * as React from "react";
 import { Loader2 } from "lucide-react";
+import * as pdfjsLib from "pdfjs-dist";
+
+if (typeof window !== "undefined") {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+}
 
 interface PdfViewerProps {
   url: string;
-}
-
-declare global {
-  interface Window {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    pdfjsLib: any;
-  }
 }
 
 export function PdfViewer({ url }: PdfViewerProps) {
@@ -27,27 +25,13 @@ export function PdfViewer({ url }: PdfViewerProps) {
     let isMounted = true;
 
     async function loadAndRenderPdf() {
+      if (!url) return;
+
       try {
         setLoading(true);
         setError(null);
 
-        // Load PDF.js script if not loaded
-        if (!window.pdfjsLib) {
-          await new Promise((resolve, reject) => {
-            const script = document.createElement("script");
-            script.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
-            script.onload = resolve;
-            script.onerror = reject;
-            document.head.appendChild(script);
-          });
-        }
-
-        if (!window.pdfjsLib) throw new Error("PDF renderer failed to initialize");
-
-        window.pdfjsLib.GlobalWorkerOptions.workerSrc =
-          "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-
-        loadingTaskRef.current = window.pdfjsLib.getDocument({ url });
+        loadingTaskRef.current = pdfjsLib.getDocument({ url });
         const pdf = await loadingTaskRef.current.promise;
 
         if (!isMounted || !containerRef.current) return;
@@ -124,7 +108,6 @@ export function PdfViewer({ url }: PdfViewerProps) {
       {error ? (
         <div className="flex flex-col items-center justify-center h-48 text-center gap-2 w-full">
           <p className="text-xs text-muted-foreground">{error}</p>
-          <iframe src={url} title="PDF Preview Fallback" className="w-full h-64 border rounded" />
         </div>
       ) : (
         <div ref={containerRef} className="w-full space-y-2" />

@@ -1,4 +1,4 @@
-const CACHE_NAME = "astra-cache-v8";
+const CACHE_NAME = "astra-cache-v9";
 
 function cleanResponse(response) {
   if (!response || !response.redirected) return response;
@@ -15,9 +15,12 @@ self.addEventListener("install", (event) => {
       .open(CACHE_NAME)
       .then(async (cache) => {
         try {
-          const res = await fetch("/");
-          if (res && res.status === 200) {
-            await cache.put("/", cleanResponse(res.clone()));
+          const preCacheUrls = ["/", "/pdf.worker.min.mjs", "/manifest.webmanifest"];
+          for (const url of preCacheUrls) {
+            const res = await fetch(url);
+            if (res && res.status === 200) {
+              await cache.put(url, cleanResponse(res.clone()));
+            }
           }
         } catch {
           // Ignore install fetch failure
@@ -117,7 +120,8 @@ self.addEventListener("fetch", (event) => {
   if (
     requestUrl.pathname.startsWith("/_next/static/") ||
     requestUrl.pathname === "/manifest.webmanifest" ||
-    /\.(png|jpg|jpeg|svg|gif|webp|ico|woff|woff2|ttf|eot|css|js|webmanifest)$/i.test(
+    requestUrl.pathname === "/pdf.worker.min.mjs" ||
+    /\.(png|jpg|jpeg|svg|gif|webp|ico|woff|woff2|ttf|eot|css|js|mjs|webmanifest)$/i.test(
       requestUrl.pathname,
     )
   ) {

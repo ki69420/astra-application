@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { RegisterServiceWorker } from "@/components/pwa/register-service-worker";
+import { RouteWarmer } from "@/components/pwa/route-warmer";
 import { OfflineBanner } from "@/components/pwa/offline-banner";
 import { Toaster } from "@/components/ui/toaster";
 import { StoreSyncProvider } from "@/components/providers/store-sync-provider";
@@ -30,6 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className={inter.className}>
         <RegisterServiceWorker />
+        <RouteWarmer />
         <StoreSyncProvider>
           <div className="bg-background">
             <OfflineBanner />
