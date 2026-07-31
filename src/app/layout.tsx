@@ -3,13 +3,11 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { RegisterServiceWorker } from "@/components/pwa/register-service-worker";
+import { OfflineBanner } from "@/components/pwa/offline-banner";
 import { Toaster } from "@/components/ui/toaster";
-
 import { StoreSyncProvider } from "@/components/providers/store-sync-provider";
 
 const inter = Inter({ subsets: ["latin"] });
-
-
 
 export const metadata: Metadata = {
   title: "Project Astra",
@@ -34,6 +32,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <RegisterServiceWorker />
         <StoreSyncProvider>
           <div className="bg-background">
+            <OfflineBanner />
             <main className="pb-20">{children}</main>
             <BottomNav />
           </div>
