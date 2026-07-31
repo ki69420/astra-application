@@ -1,19 +1,28 @@
-const CACHE_NAME = "astra-cache-v7";
-const OFFLINE_ROUTES = [
-  "/",
-  "/students",
-  "/custom-fields",
-  "/vault",
-  "/documents",
-  "/settings",
-  "/manifest.webmanifest",
-];
+const CACHE_NAME = "astra-cache-v8";
+
+function cleanResponse(response) {
+  if (!response || !response.redirected) return response;
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
+  });
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
       .open(CACHE_NAME)
-      .then((cache) => cache.addAll(OFFLINE_ROUTES))
+      .then(async (cache) => {
+        try {
+          const res = await fetch("/");
+          if (res && res.status === 200) {
+            await cache.put("/", cleanResponse(res.clone()));
+          }
+        } catch {
+          // Ignore install fetch failure
+        }
+      })
       .catch(() => {}),
   );
   self.skipWaiting();
@@ -41,7 +50,6 @@ self.addEventListener("fetch", (event) => {
   if (requestUrl.origin !== self.location.origin) return;
 
   // 1. Next.js RSC Data Requests (_rsc query param or RSC header)
-  // When offline, return 200 OK empty payload so Next.js proceeds with 0ms client-side rendering
   if (
     requestUrl.searchParams.has("_rsc") ||
     event.request.headers.get("RSC") === "1"
@@ -58,7 +66,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // 2. Bypass API endpoints from SW cache (handled directly by Zustand RAM + IndexedDB)
+  // 2. Bypass API endpoints from SW cache
   if (requestUrl.pathname.startsWith("/api/")) {
     event.respondWith(
       fetch(event.request).catch(
@@ -73,46 +81,39 @@ self.addEventListener("fetch", (event) => {
   }
 
   // 3. Navigation Requests (Page Visits & Cold Boots)
+  // Strips response.redirected === true to prevent iOS Safari & Android Chrome ERR_FAILED crashes
   if (event.request.mode === "navigate") {
     event.respondWith(
-      fetch(event.request)
-        .then((networkResponse) => {
+      caches.match("/").then(async (cachedRoot) => {
+        try {
+          const networkResponse = await fetch(event.request);
           if (networkResponse && networkResponse.status === 200) {
-            const responseToCache = networkResponse.clone();
+            const cleaned = cleanResponse(networkResponse);
+            const copy = cleaned.clone();
             caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseToCache);
-              cache.put("/", responseToCache.clone());
+              cache.put("/", copy);
+              cache.put(event.request, cleaned.clone());
             });
+            return cleaned;
           }
-          return networkResponse;
-        })
-        .catch(async () => {
-          // Network failed (Offline / Airplane Mode) -> Serve cached HTML
-          const cachedRoute = await caches.match(event.request);
-          if (cachedRoute) return cachedRoute;
+        } catch {
+          // Offline / Airplane Mode
+        }
 
-          const cachedRoot = await caches.match("/");
-          if (cachedRoot) return cachedRoot;
+        const specificMatch = await caches.match(event.request);
+        if (specificMatch) return cleanResponse(specificMatch);
+        if (cachedRoot) return cleanResponse(cachedRoot);
 
-          const cache = await caches.open(CACHE_NAME);
-          const keys = await cache.keys();
-          for (const key of keys) {
-            const res = await cache.match(key);
-            if (res && res.headers.get("content-type")?.includes("text/html")) {
-              return res;
-            }
-          }
-
-          return new Response(
-            `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Project Astra</title></head><body><div id="root"></div></body></html>`,
-            { headers: { "Content-Type": "text/html" } },
-          );
-        }),
+        return new Response(
+          `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Project Astra</title></head><body><div id="root"></div></body></html>`,
+          { headers: { "Content-Type": "text/html" } },
+        );
+      }),
     );
     return;
   }
 
-  // 4. Cache-First Strategy for JS Chunks, CSS, Fonts, Images & Manifest
+  // 4. Cache-First Strategy for Static Assets
   if (
     requestUrl.pathname.startsWith("/_next/static/") ||
     requestUrl.pathname === "/manifest.webmanifest" ||
@@ -122,14 +123,16 @@ self.addEventListener("fetch", (event) => {
   ) {
     event.respondWith(
       caches.match(event.request).then((cachedResponse) => {
-        if (cachedResponse) return cachedResponse;
+        if (cachedResponse) return cleanResponse(cachedResponse);
         return fetch(event.request)
           .then((networkResponse) => {
             if (networkResponse && networkResponse.status === 200) {
-              const responseToCache = networkResponse.clone();
+              const cleaned = cleanResponse(networkResponse);
+              const copy = cleaned.clone();
               caches.open(CACHE_NAME).then((cache) => {
-                cache.put(event.request, responseToCache);
+                cache.put(event.request, copy);
               });
+              return cleaned;
             }
             return networkResponse;
           })
