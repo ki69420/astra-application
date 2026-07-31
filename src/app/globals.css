@@ -45,6 +45,10 @@
   --radius: 0.5rem;
 }
 
+:root[data-text-size="normal"] { font-size: 16px; }
+:root[data-text-size="large"] { font-size: 18px; }
+:root[data-text-size="xlarge"] { font-size: 20px; }
+
 .dark {
   --background: hsl(222.2 84% 4.9%);
   --foreground: hsl(210 40% 98%);
@@ -89,6 +93,6 @@
     -webkit-font-smoothing: antialiased;
   }
   input, select, textarea, button {
-    font-size: 16px; /* prevents iOS zoom on focus */
+    font-size: 1rem; /* scales dynamically with root rem */
   }
 }

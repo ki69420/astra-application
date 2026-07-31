@@ -1,113 +1,147 @@
+"use client";
+import * as React from "react";
+import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { History } from "lucide-react";
+import { useAppStore, type TextSize } from "@/lib/store/use-app-store";
+import { Check, ChevronRight, Info, Type, Phone, GraduationCap } from "lucide-react";
+import { toast } from "@/components/ui/use-toast";
+
+const TEXT_SIZES: Array<{
+  id: TextSize;
+  title: string;
+  desc: string;
+  badge: string;
+}> = [
+  {
+    id: "normal",
+    title: "Normal",
+    desc: "Standard text size",
+    badge: "100%",
+  },
+  {
+    id: "large",
+    title: "Large",
+    desc: "Comfortable big text",
+    badge: "112%",
+  },
+  {
+    id: "xlarge",
+    title: "Extra Large",
+    desc: "Maximum legibility",
+    badge: "125%",
+  },
+];
 
 export default function SettingsPage() {
-  const changelogs = [
-    {
-      version: "v1.3.0",
-      date: "31 July 2026",
-      tag: "Current Release",
-      features: [
-        "Vault: N-level recursive folder grouping & multi-parent linking system.",
-        "Drag & Drop Reordering: Touch-friendly @dnd-kit drag-and-drop hierarchy manager.",
-        "Zustand State Persistence: Instant 0ms local device rehydration across force closes.",
-        "IndexedDB Binary Cache: Local device storage for offline PDF and image viewing.",
-      ],
-    },
-    {
-      version: "v1.2.0",
-      date: "29 July 2026",
-      features: [
-        "100% Client-Side Navigation: All page transitions now execute in 0ms directly from Zustand memory without Vercel DB lag.",
-        "Mobile PWA PDF.js Preview: PDF files render on HTML canvas without Android blue 'Open' buttons.",
-        "Native Web Share API: Direct download/share prompts on iOS and Android PWAs without screen freezing or popup blockers.",
-        "UTC Date Standardization: Date picker saves at 12:00 NOON UTC, eliminating off-by-one date shifts on server deployments.",
-        "Mobile Responsive Attachments: Dedicated Attachments card on student profiles with clean mobile alignment.",
-        "Strict Display Order: Custom field display order is strictly respected on profile views.",
-      ],
-    },
-    {
-      version: "v1.1.0",
-      date: "25 July 2026",
-      features: [
-        "Zustand State Store: Full database caching in memory for instant tab navigation.",
-        "Custom Field Filtering: Multi-field search modal on students page.",
-        "Expandable Radio & Checkbox Controls: Collapsible option lists with Deselect All.",
-        "Segmented Boolean Toggle: Segmented Yes / No control.",
-      ],
-    },
-    {
-      version: "v1.0.0",
-      date: "20 July 2026",
-      features: [
-        "Initial release: Students management, custom fields definitions, document storage.",
-      ],
-    },
-  ];
+  const textSize = useAppStore((s) => s.textSize);
+  const setTextSize = useAppStore((s) => s.setTextSize);
+
+  const handleSelectSize = (size: TextSize) => {
+    setTextSize(size);
+    toast({ title: `Text size updated to ${size.toUpperCase()}` });
+  };
 
   return (
     <div className="flex flex-col min-h-screen">
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b px-4 py-3">
         <h1 className="text-lg font-bold leading-tight">Settings</h1>
-        <p className="text-xs text-muted-foreground">Platform configuration &amp; version history</p>
+        <p className="text-xs text-muted-foreground">App preferences &amp; text size controls</p>
       </header>
 
-      <div className="px-4 py-4 space-y-4">
-        {/* General Info */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">General</CardTitle>
-            <CardDescription className="text-xs">Project Astra — Tuition Management System</CardDescription>
+      <div className="px-4 py-4 space-y-5">
+        {/* Text Size Selector Card */}
+        <Card className="overflow-hidden">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Type className="h-5 w-5 text-primary" />
+              Text Size for Reading Comfort
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Choose a larger font size to make all text across the app easier to read.
+            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {[
-              ["Current Version", "1.3.0"],
-              ["Database", "PostgreSQL via Supabase"],
-              ["Storage", "Supabase Storage (private buckets)"],
-              ["State Management", "Zustand Global Store (Persistent)"],
-              ["Device Cache", "IndexedDB Binary Document Store"],
-            ].map(([label, value]) => (
-              <div key={label} className="flex justify-between py-1 border-b last:border-0">
-                <span className="text-sm text-muted-foreground">{label}</span>
-                <span className="text-sm font-medium">{value}</span>
+          <CardContent className="space-y-4">
+            {/* Button Tiles for Text Size */}
+            <div className="grid grid-cols-1 gap-2.5">
+              {TEXT_SIZES.map((item) => {
+                const isSelected = (textSize || "normal") === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => handleSelectSize(item.id)}
+                    className={`flex items-center justify-between p-3.5 rounded-xl border text-left transition-all ${
+                      isSelected
+                        ? "border-primary bg-primary/10 text-primary ring-2 ring-primary/20 shadow-sm"
+                        : "hover:bg-accent/50 border-border text-foreground"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`h-5 w-5 rounded-full border flex items-center justify-center shrink-0 ${
+                          isSelected ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/40"
+                        }`}
+                      >
+                        {isSelected && <Check className="h-3 w-3 stroke-[3]" />}
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold leading-tight">{item.title}</p>
+                        <p className="text-xs text-muted-foreground">{item.desc}</p>
+                      </div>
+                    </div>
+
+                    <Badge variant={isSelected ? "default" : "outline"} className="text-xs font-semibold shrink-0">
+                      {item.badge}
+                    </Badge>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Live Text Preview Box */}
+            <div className="pt-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                Live Text Preview
+              </p>
+              <div className="p-3.5 rounded-xl bg-muted/40 border space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-sm flex items-center gap-1.5">
+                    <GraduationCap className="h-4 w-4 text-primary shrink-0" />
+                    Rahul Sharma
+                  </span>
+                  <Badge variant="secondary" className="text-xs">
+                    Enrolled
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Phone className="h-3.5 w-3.5 text-primary shrink-0" />
+                  <span>+91 98765 43210</span>
+                </div>
               </div>
-            ))}
+            </div>
           </CardContent>
         </Card>
 
-        {/* Version History & Changelogs */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
-              <History className="h-4 w-4 text-primary" />
-              Version History &amp; Changelogs
-            </CardTitle>
-            <CardDescription className="text-xs">System update logs and release notes</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4 pt-1">
-            {changelogs.map((log) => (
-              <div key={log.version} className="border-b last:border-0 pb-3 last:pb-0 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-sm">{log.version}</span>
-                    {log.tag && (
-                      <Badge variant="default" className="text-[10px] py-0 px-1.5 h-4">
-                        {log.tag}
-                      </Badge>
-                    )}
-                  </div>
-                  <span className="text-xs text-muted-foreground font-mono">{log.date}</span>
+        {/* About Section Tile */}
+        <Card className="hover:border-primary/50 transition-colors">
+          <CardContent className="p-0">
+            <Link
+              href="/settings/about"
+              className="flex items-center justify-between p-4 rounded-xl hover:bg-accent/40 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                  <Info className="h-5 w-5" />
                 </div>
-                <ul className="list-disc list-inside space-y-1 text-xs text-muted-foreground">
-                  {log.features.map((feat, idx) => (
-                    <li key={idx} className="leading-relaxed">
-                      {feat}
-                    </li>
-                  ))}
-                </ul>
+                <div>
+                  <p className="text-sm font-bold leading-tight">About App</p>
+                  <p className="text-xs text-muted-foreground">App version, platform info &amp; release history</p>
+                </div>
               </div>
-            ))}
+              <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
+            </Link>
           </CardContent>
         </Card>
       </div>

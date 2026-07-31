@@ -20,6 +20,12 @@ export function StoreSyncProvider({
   const hydrateStore = useAppStore((s) => s.hydrateStore);
   const isInitialized = useAppStore((s) => s.isInitialized);
   const checkAndSyncBackground = useAppStore((s) => s.checkAndSyncBackground);
+  const textSize = useAppStore((s) => s.textSize);
+
+  // Sync root font size attribute data-text-size for app-wide text scaling
+  React.useEffect(() => {
+    document.documentElement.setAttribute("data-text-size", textSize || "normal");
+  }, [textSize]);
 
   React.useEffect(() => {
     if (!isInitialized && initialStudents && initialHomepageFields && initialSearchableFields) {

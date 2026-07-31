@@ -91,6 +91,8 @@ export type VaultGroupItemRow = {
   display_order: number;
 };
 
+export type TextSize = "normal" | "large" | "xlarge";
+
 interface AppState {
   students: StudentRow[];
   totalEnrolledCount: number;
@@ -99,6 +101,9 @@ interface AppState {
   customFields: CustomField[];
   documents: DocumentRow[];
   totalDocumentsCount: number;
+
+  textSize: TextSize;
+  setTextSize: (size: TextSize) => void;
 
   vaultGroups: VaultGroupRow[];
   vaultParentLinks: VaultGroupParentChildRow[];
@@ -165,6 +170,9 @@ export const useAppStore = create<AppState>()(
       customFields: [],
       documents: [],
       totalDocumentsCount: 0,
+
+      textSize: "normal",
+      setTextSize: (textSize) => set({ textSize }),
 
       vaultGroups: [],
       vaultParentLinks: [],
@@ -451,6 +459,7 @@ export const useAppStore = create<AppState>()(
         customFields: state.customFields,
         documents: state.documents,
         totalDocumentsCount: state.totalDocumentsCount,
+        textSize: state.textSize,
         vaultGroups: state.vaultGroups,
         vaultParentLinks: state.vaultParentLinks,
         vaultItems: state.vaultItems,
