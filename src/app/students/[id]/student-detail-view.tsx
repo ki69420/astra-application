@@ -31,6 +31,31 @@ type StudentDetailData = {
 };
 
 function displayValue(cfv: CFV): React.ReactNode {
+  if (cfv.field.field_type === "URL" && cfv.value_text) {
+    const href = cfv.value_text.startsWith("http")
+      ? cfv.value_text
+      : `https://${cfv.value_text}`;
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noreferrer"
+        className="text-primary underline hover:opacity-80 break-all text-xs font-medium"
+      >
+        {cfv.value_text}
+      </a>
+    );
+  }
+  if (cfv.field.field_type === "EMAIL" && cfv.value_text) {
+    return (
+      <a
+        href={`mailto:${cfv.value_text}`}
+        className="text-primary underline hover:opacity-80 break-all text-xs font-medium"
+      >
+        {cfv.value_text}
+      </a>
+    );
+  }
   if (cfv.value_text !== null) return cfv.value_text;
   if (cfv.value_number !== null) return String(cfv.value_number);
   if (cfv.value_decimal !== null) return String(cfv.value_decimal);

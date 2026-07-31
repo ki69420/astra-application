@@ -1,4 +1,5 @@
 "use client";
+import * as React from "react";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, Loader2, RefreshCw } from "lucide-react";
@@ -19,7 +20,7 @@ import { useAppStore } from "@/lib/store/use-app-store";
 
 const FIELD_TYPES = [
   "TEXT", "TEXTAREA", "NUMBER", "DECIMAL", "DATE", "TIME", "DATETIME",
-  "BOOLEAN", "PHONE", "RADIO", "CHECKBOX", "FILE", "IMAGE",
+  "BOOLEAN", "EMAIL", "PHONE", "URL", "RADIO", "CHECKBOX", "FILE", "IMAGE",
 ] as const;
 
 const OPTION_TYPES = new Set(["SELECT", "MULTI_SELECT", "RADIO", "CHECKBOX"]);
@@ -52,10 +53,17 @@ export function CustomFieldForm({ defaultValues, fieldId }: CustomFieldFormProps
     handleSubmit,
     control,
     watch,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     defaultValues: { show_in_homepage: false, is_searchable: false, options: [], ...defaultValues },
   });
+
+  React.useEffect(() => {
+    if (defaultValues) {
+      reset({ show_in_homepage: false, is_searchable: false, options: [], ...defaultValues });
+    }
+  }, [defaultValues, reset]);
 
   const { fields, append, remove } = useFieldArray({ control, name: "options" });
   const fieldType = watch("field_type");

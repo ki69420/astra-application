@@ -1,4 +1,5 @@
 "use client";
+import * as React from "react";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import type { CustomFieldDefinition } from "@prisma/client";
@@ -43,8 +44,15 @@ export function StudentForm({ customFields, defaultValues, studentId }: StudentF
     register,
     handleSubmit,
     control,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({ defaultValues });
+
+  React.useEffect(() => {
+    if (defaultValues) {
+      reset(defaultValues);
+    }
+  }, [defaultValues, reset]);
 
   async function uploadFile(file: File) {
     const formData = new FormData();

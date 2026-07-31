@@ -150,7 +150,7 @@ export function EditStudentView({
     return vals;
   }, [storeStudent, student]);
 
-  if (!student && loading) {
+  if (!student) {
     return (
       <div className="flex flex-col min-h-screen">
         <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b px-4 py-3 flex items-center gap-2">
@@ -161,9 +161,12 @@ export function EditStudentView({
           </Button>
           <span className="text-base font-bold">Edit Student</span>
         </header>
-        <div className="flex flex-col items-center justify-center py-24 gap-2">
+        <div className="px-4 py-16 flex flex-col items-center justify-center gap-3 text-center">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          <p className="text-xs text-muted-foreground">Loading form...</p>
+          <div className="space-y-1">
+            <p className="text-sm font-medium">Downloading student profile</p>
+            <p className="text-xs text-muted-foreground">Please wait a moment — data is syncing in the background.</p>
+          </div>
         </div>
       </div>
     );

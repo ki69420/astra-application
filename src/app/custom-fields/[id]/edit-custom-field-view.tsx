@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import Link from "next/link";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CustomFieldForm } from "../custom-field-form";
 import { useAppStore } from "@/lib/store/use-app-store";
@@ -48,7 +48,7 @@ export function EditCustomFieldView({
     }
   }, [field, fieldId]);
 
-  if (!field && loading) {
+  if (!field) {
     return (
       <div className="flex flex-col min-h-screen">
         <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b px-4 py-3 flex items-center gap-2">
@@ -59,15 +59,18 @@ export function EditCustomFieldView({
           </Button>
           <span className="text-base font-bold">Edit Field</span>
         </header>
-        <div className="flex flex-col items-center justify-center py-24 gap-2">
+        <div className="px-4 py-16 flex flex-col items-center justify-center gap-3 text-center">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          <p className="text-xs text-muted-foreground">Loading field...</p>
+          <div className="space-y-1">
+            <p className="text-sm font-medium">Downloading field settings</p>
+            <p className="text-xs text-muted-foreground">Please wait a moment — data is syncing in the background.</p>
+          </div>
         </div>
       </div>
     );
   }
 
-  const fieldLabel = field ? field.label : "";
+  const fieldLabel = field.label;
 
   return (
     <div>
@@ -82,34 +85,33 @@ export function EditCustomFieldView({
           <p className="text-xs text-muted-foreground truncate">{fieldLabel}</p>
         </div>
       </header>
-      {field && (
-        <CustomFieldForm
-          fieldId={field.id}
-          defaultValues={{
-            key: field.key,
-            label: field.label,
-            field_type: field.field_type as
-              | "TEXT"
-              | "TEXTAREA"
-              | "NUMBER"
-              | "DECIMAL"
-              | "DATE"
-              | "TIME"
-              | "BOOLEAN"
-              | "PHONE"
-              | "RADIO"
-              | "CHECKBOX"
-              | "FILE"
-              | "IMAGE",
-            show_in_homepage: field.show_in_homepage,
-            is_searchable: field.is_searchable,
-            options:
-              (field.options_json as string[] | null | undefined)?.map(
-                (value) => ({ value }),
-              ) ?? [],
-          }}
-        />
-      )}
+
+      <CustomFieldForm
+        fieldId={field.id}
+        defaultValues={{
+          key: field.key,
+          label: field.label,
+          field_type: field.field_type as
+            | "TEXT"
+            | "TEXTAREA"
+            | "NUMBER"
+            | "DECIMAL"
+            | "DATE"
+            | "TIME"
+            | "BOOLEAN"
+            | "PHONE"
+            | "RADIO"
+            | "CHECKBOX"
+            | "FILE"
+            | "IMAGE",
+          show_in_homepage: field.show_in_homepage,
+          is_searchable: field.is_searchable,
+          options:
+            (field.options_json as string[] | null | undefined)?.map(
+              (value) => ({ value }),
+            ) ?? [],
+        }}
+      />
     </div>
   );
 }
