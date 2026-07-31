@@ -38,10 +38,20 @@ export default function SettingsPage() {
   const textSize = useAppStore((s) => s.textSize);
   const setTextSize = useAppStore((s) => s.setTextSize);
 
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const handleSelectSize = (size: TextSize) => {
     setTextSize(size);
     toast({ title: `Text size updated to ${size.toUpperCase()}` });
   };
+
+  if (!mounted) {
+    return <div className="min-h-screen bg-background" />;
+  }
+
 
   return (
     <div className="flex flex-col min-h-screen">
