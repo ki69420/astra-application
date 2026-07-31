@@ -11,9 +11,13 @@ export async function GET() {
       latestField,
       latestValue,
       latestDocument,
+      latestVaultGroup,
+      latestVaultItem,
       studentCount,
       fieldCount,
       documentCount,
+      vaultGroupCount,
+      vaultItemCount,
     ] = await Promise.all([
       prisma.student.findFirst({
         orderBy: { updated_at: "desc" },
@@ -32,9 +36,19 @@ export async function GET() {
         orderBy: { uploaded_at: "desc" },
         select: { uploaded_at: true },
       }),
+      prisma.vaultGroup.findFirst({
+        orderBy: { updated_at: "desc" },
+        select: { updated_at: true },
+      }),
+      prisma.vaultItem.findFirst({
+        orderBy: { updated_at: "desc" },
+        select: { updated_at: true },
+      }),
       prisma.student.count(),
       prisma.customFieldDefinition.count(),
       prisma.document.count({ where: { deleted_at: null } }),
+      prisma.vaultGroup.count(),
+      prisma.vaultItem.count(),
     ]);
 
     const timestamps = [
@@ -42,6 +56,8 @@ export async function GET() {
       latestField?.updated_at?.getTime() ?? 0,
       latestValue?.updated_at?.getTime() ?? 0,
       latestDocument?.uploaded_at?.getTime() ?? 0,
+      latestVaultGroup?.updated_at?.getTime() ?? 0,
+      latestVaultItem?.updated_at?.getTime() ?? 0,
     ];
 
     const maxTimestamp = Math.max(...timestamps, 0);
@@ -51,6 +67,8 @@ export async function GET() {
       total_students: studentCount,
       total_fields: fieldCount,
       total_documents: documentCount,
+      total_vault_groups: vaultGroupCount,
+      total_vault_items: vaultItemCount,
     });
   } catch (error) {
     return NextResponse.json(

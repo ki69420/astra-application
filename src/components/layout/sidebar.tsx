@@ -1,12 +1,13 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { GraduationCap, Settings, FileText, LayoutDashboard, SlidersHorizontal } from "lucide-react";
+import { GraduationCap, Settings, FileText, LayoutDashboard, SlidersHorizontal, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/students", label: "Students", icon: GraduationCap },
   { href: "/custom-fields", label: "Custom Fields", icon: SlidersHorizontal },
+  { href: "/vault", label: "Vault", icon: Shield },
   { href: "/documents", label: "Documents", icon: FileText },
   { href: "/settings", label: "Settings", icon: Settings },
 ];

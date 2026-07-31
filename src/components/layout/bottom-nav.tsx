@@ -2,12 +2,13 @@
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { GraduationCap, Settings, FileText, SlidersHorizontal, Loader2 } from "lucide-react";
+import { GraduationCap, Settings, FileText, SlidersHorizontal, Shield, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/students", label: "Students", icon: GraduationCap },
   { href: "/custom-fields", label: "Fields", icon: SlidersHorizontal },
+  { href: "/vault", label: "Vault", icon: Shield },
   { href: "/documents", label: "Docs", icon: FileText },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
@@ -38,7 +39,7 @@ export function BottomNav() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
-      <div className="flex items-center justify-around h-16 px-2">
+      <div className="flex items-center justify-around h-16 px-1">
         {navItems.map(({ href, label, icon: Icon }) => {
           const active = pathname.startsWith(href);
           const isLoading = pendingHref === href && !active;
@@ -49,7 +50,7 @@ export function BottomNav() {
               href={href}
               onClick={(e) => handleNavClick(e, href)}
               className={cn(
-                "flex flex-col items-center gap-1 px-3 py-2 rounded-xl text-xs font-medium transition-colors min-w-[56px] relative",
+                "flex flex-col items-center gap-1 px-2 py-1.5 rounded-xl text-xs font-medium transition-colors min-w-[50px] relative",
                 active || isLoading
                   ? "text-primary font-semibold"
                   : "text-muted-foreground"

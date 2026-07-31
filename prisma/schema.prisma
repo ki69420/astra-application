@@ -52,7 +52,8 @@ model CustomFieldDefinition {
   created_at       DateTime  @default(now())
   updated_at       DateTime  @updatedAt
 
-  values StudentCustomFieldValue[]
+  values      StudentCustomFieldValue[]
+  vault_items VaultItem[]
 
   @@map("custom_field_definitions")
 }
@@ -71,6 +72,7 @@ model Document {
   deleted_at       DateTime?
 
   custom_field_values StudentCustomFieldValue[]
+  vault_items         VaultItem[]
 
   @@map("documents")
 }
@@ -97,4 +99,63 @@ model StudentCustomFieldValue {
   @@unique([student_id, field_id])
   @@index([student_id])
   @@map("student_custom_field_values")
+}
+
+model VaultGroup {
+  id            String   @id @default(uuid())
+  title         String
+  description   String?
+  icon          String?
+  display_order Int      @default(0)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  parent_links VaultGroupParentChild[] @relation("ChildGroups")
+  child_links  VaultGroupParentChild[] @relation("ParentGroups")
+  items        VaultGroupItem[]
+
+  @@map("vault_groups")
+}
+
+model VaultGroupParentChild {
+  parent_id     String
+  child_id      String
+  display_order Int      @default(0)
+  created_at    DateTime @default(now())
+
+  parent VaultGroup @relation("ParentGroups", fields: [parent_id], references: [id], onDelete: Cascade)
+  child  VaultGroup @relation("ChildGroups", fields: [child_id], references: [id], onDelete: Cascade)
+
+  @@id([parent_id, child_id])
+  @@map("vault_group_parent_child")
+}
+
+model VaultItem {
+  id              String   @id @default(uuid())
+  title           String
+  value_text      String?
+  value_date      DateTime?
+  document_id     String?
+  custom_field_id String?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  document     Document?              @relation(fields: [document_id], references: [id], onDelete: SetNull)
+  custom_field CustomFieldDefinition? @relation(fields: [custom_field_id], references: [id], onDelete: SetNull)
+  group_links  VaultGroupItem[]
+
+  @@map("vault_items")
+}
+
+model VaultGroupItem {
+  group_id      String
+  item_id       String
+  display_order Int      @default(0)
+  created_at    DateTime @default(now())
+
+  group VaultGroup @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  item  VaultItem  @relation(fields: [item_id], references: [id], onDelete: Cascade)
+
+  @@id([group_id, item_id])
+  @@map("vault_group_items")
 }

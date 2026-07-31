@@ -5,9 +5,19 @@ import { History } from "lucide-react";
 export default function SettingsPage() {
   const changelogs = [
     {
+      version: "v1.3.0",
+      date: "31 July 2026",
+      tag: "Current Release",
+      features: [
+        "Vault: N-level recursive folder grouping & multi-parent linking system.",
+        "Drag & Drop Reordering: Touch-friendly @dnd-kit drag-and-drop hierarchy manager.",
+        "Zustand State Persistence: Instant 0ms local device rehydration across force closes.",
+        "IndexedDB Binary Cache: Local device storage for offline PDF and image viewing.",
+      ],
+    },
+    {
       version: "v1.2.0",
       date: "29 July 2026",
-      tag: "Current Release",
       features: [
         "100% Client-Side Navigation: All page transitions now execute in 0ms directly from Zustand memory without Vercel DB lag.",
         "Mobile PWA PDF.js Preview: PDF files render on HTML canvas without Android blue 'Open' buttons.",
@@ -52,10 +62,11 @@ export default function SettingsPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             {[
-              ["Current Version", "1.2.0"],
+              ["Current Version", "1.3.0"],
               ["Database", "PostgreSQL via Supabase"],
               ["Storage", "Supabase Storage (private buckets)"],
-              ["State Management", "Zustand Global Store"],
+              ["State Management", "Zustand Global Store (Persistent)"],
+              ["Device Cache", "IndexedDB Binary Document Store"],
             ].map(([label, value]) => (
               <div key={label} className="flex justify-between py-1 border-b last:border-0">
                 <span className="text-sm text-muted-foreground">{label}</span>

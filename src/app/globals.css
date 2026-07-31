@@ -67,6 +67,19 @@
   --ring: hsl(224.3 76.3% 48%);
 }
 
+@keyframes toast-progress {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+.animate-toast-progress {
+  animation: toast-progress 500ms linear forwards;
+}
+
 @layer base {
   * { border-color: var(--border); -webkit-tap-highlight-color: transparent; }
   body {

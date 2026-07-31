@@ -58,6 +58,39 @@ export type StudentRow = {
   >;
 };
 
+export type VaultGroupRow = {
+  id: string;
+  title: string;
+  description?: string | null;
+  icon?: string | null;
+  display_order: number;
+  created_at: Date | string;
+};
+
+export type VaultGroupParentChildRow = {
+  parent_id: string;
+  child_id: string;
+  display_order: number;
+};
+
+export type VaultItemRow = {
+  id: string;
+  title: string;
+  value_text?: string | null;
+  value_date?: Date | null | string;
+  document_id?: string | null;
+  custom_field_id?: string | null;
+  created_at: Date | string;
+  document?: DocumentRow | null;
+  custom_field?: CustomField | null;
+};
+
+export type VaultGroupItemRow = {
+  group_id: string;
+  item_id: string;
+  display_order: number;
+};
+
 interface AppState {
   students: StudentRow[];
   totalEnrolledCount: number;
@@ -66,6 +99,12 @@ interface AppState {
   customFields: CustomField[];
   documents: DocumentRow[];
   totalDocumentsCount: number;
+
+  vaultGroups: VaultGroupRow[];
+  vaultParentLinks: VaultGroupParentChildRow[];
+  vaultItems: VaultItemRow[];
+  vaultGroupItemLinks: VaultGroupItemRow[];
+
   lastSyncedAt: string | null;
   isInitialized: boolean;
 
@@ -77,6 +116,13 @@ interface AppState {
     customFields?: CustomField[];
     documents?: DocumentRow[];
     totalDocumentsCount?: number;
+  }) => void;
+
+  hydrateVault: (data: {
+    groups: VaultGroupRow[];
+    parentLinks: VaultGroupParentChildRow[];
+    items: VaultItemRow[];
+    groupItemLinks: VaultGroupItemRow[];
   }) => void;
 
   optimisticAddStudent: (student: StudentRow) => void;
@@ -97,7 +143,16 @@ interface AppState {
   optimisticAddDocument: (doc: DocumentRow) => void;
   optimisticDeleteDocument: (id: string) => void;
 
+  optimisticAddVaultGroup: (group: VaultGroupRow, parentIds?: string[]) => void;
+  optimisticUpdateVaultGroup: (id: string, updated: Partial<VaultGroupRow>, parentIds?: string[]) => void;
+  optimisticDeleteVaultGroup: (id: string, parentId?: string) => void;
+
+  optimisticAddVaultItem: (item: VaultItemRow, groupIds?: string[]) => void;
+  optimisticUpdateVaultItem: (id: string, updated: Partial<VaultItemRow>, groupIds?: string[]) => void;
+  optimisticDeleteVaultItem: (id: string, groupId?: string) => void;
+
   checkAndSyncBackground: () => Promise<void>;
+  fetchVaultBackground: () => Promise<void>;
 }
 
 export const useAppStore = create<AppState>()(
@@ -110,6 +165,12 @@ export const useAppStore = create<AppState>()(
       customFields: [],
       documents: [],
       totalDocumentsCount: 0,
+
+      vaultGroups: [],
+      vaultParentLinks: [],
+      vaultItems: [],
+      vaultGroupItemLinks: [],
+
       lastSyncedAt: null,
       isInitialized: false,
 
@@ -125,6 +186,15 @@ export const useAppStore = create<AppState>()(
             data.totalDocumentsCount ?? data.documents?.length ?? get().totalDocumentsCount,
           lastSyncedAt: new Date().toISOString(),
           isInitialized: true,
+        });
+      },
+
+      hydrateVault: (data) => {
+        set({
+          vaultGroups: data.groups,
+          vaultParentLinks: data.parentLinks,
+          vaultItems: data.items,
+          vaultGroupItemLinks: data.groupItemLinks,
         });
       },
 
@@ -217,6 +287,111 @@ export const useAppStore = create<AppState>()(
         }));
       },
 
+      optimisticAddVaultGroup: (group, parentIds = []) => {
+        set((state) => {
+          const newGroups = [...state.vaultGroups, group];
+          const newParentLinks = [
+            ...state.vaultParentLinks,
+            ...parentIds.map((pId, idx) => ({ parent_id: pId, child_id: group.id, display_order: idx })),
+          ];
+          return { vaultGroups: newGroups, vaultParentLinks: newParentLinks };
+        });
+      },
+
+      optimisticUpdateVaultGroup: (id, updated, parentIds) => {
+        set((state) => {
+          const newGroups = state.vaultGroups.map((g) => (g.id === id ? { ...g, ...updated } : g));
+          let newParentLinks = state.vaultParentLinks;
+          if (parentIds !== undefined) {
+            newParentLinks = state.vaultParentLinks.filter((l) => l.child_id !== id);
+            newParentLinks.push(
+              ...parentIds.map((pId, idx) => ({ parent_id: pId, child_id: id, display_order: idx })),
+            );
+          }
+          return { vaultGroups: newGroups, vaultParentLinks: newParentLinks };
+        });
+      },
+
+      optimisticDeleteVaultGroup: (id, parentId) => {
+        set((state) => {
+          if (parentId) {
+            // Unlink group from parent
+            return {
+              vaultParentLinks: state.vaultParentLinks.filter(
+                (l) => !(l.parent_id === parentId && l.child_id === id),
+              ),
+            };
+          }
+          // Delete group permanently
+          return {
+            vaultGroups: state.vaultGroups.filter((g) => g.id !== id),
+            vaultParentLinks: state.vaultParentLinks.filter(
+              (l) => l.parent_id !== id && l.child_id !== id,
+            ),
+            vaultGroupItemLinks: state.vaultGroupItemLinks.filter((l) => l.group_id !== id),
+          };
+        });
+      },
+
+      optimisticAddVaultItem: (item, groupIds = []) => {
+        set((state) => {
+          const newItems = [item, ...state.vaultItems];
+          const newItemLinks = [
+            ...state.vaultGroupItemLinks,
+            ...groupIds.map((gId, idx) => ({ group_id: gId, item_id: item.id, display_order: idx })),
+          ];
+          return { vaultItems: newItems, vaultGroupItemLinks: newItemLinks };
+        });
+      },
+
+      optimisticUpdateVaultItem: (id, updated, groupIds) => {
+        set((state) => {
+          const newItems = state.vaultItems.map((i) => (i.id === id ? { ...i, ...updated } : i));
+          let newItemLinks = state.vaultGroupItemLinks;
+          if (groupIds !== undefined) {
+            newItemLinks = state.vaultGroupItemLinks.filter((l) => l.item_id !== id);
+            newItemLinks.push(
+              ...groupIds.map((gId, idx) => ({ group_id: gId, item_id: id, display_order: idx })),
+            );
+          }
+          return { vaultItems: newItems, vaultGroupItemLinks: newItemLinks };
+        });
+      },
+
+      optimisticDeleteVaultItem: (id, groupId) => {
+        set((state) => {
+          if (groupId) {
+            // Unlink item from group
+            return {
+              vaultGroupItemLinks: state.vaultGroupItemLinks.filter(
+                (l) => !(l.group_id === groupId && l.item_id === id),
+              ),
+            };
+          }
+          // Delete item permanently
+          return {
+            vaultItems: state.vaultItems.filter((i) => i.id !== id),
+            vaultGroupItemLinks: state.vaultGroupItemLinks.filter((l) => l.item_id !== id),
+          };
+        });
+      },
+
+      fetchVaultBackground: async () => {
+        try {
+          const res = await fetch("/api/vault/full", { cache: "no-store" });
+          if (!res.ok) return;
+          const data = await res.json();
+          get().hydrateVault({
+            groups: data.groups,
+            parentLinks: data.parentLinks,
+            items: data.items,
+            groupItemLinks: data.groupItemLinks,
+          });
+        } catch {
+          // Silent catch
+        }
+      },
+
       checkAndSyncBackground: async () => {
         try {
           // 1. Light 5ms metadata check across all database tables
@@ -228,6 +403,8 @@ export const useAppStore = create<AppState>()(
             total_students: number;
             total_fields: number;
             total_documents: number;
+            total_vault_groups: number;
+            total_vault_items: number;
           };
           const storeLastSync = get().lastSyncedAt;
 
@@ -239,7 +416,9 @@ export const useAppStore = create<AppState>()(
             serverTime > localTime ||
             meta.total_students !== get().totalEnrolledCount ||
             meta.total_fields !== get().customFields.length ||
-            meta.total_documents !== get().totalDocumentsCount
+            meta.total_documents !== get().totalDocumentsCount ||
+            meta.total_vault_groups !== get().vaultGroups.length ||
+            meta.total_vault_items !== get().vaultItems.length
           ) {
             const fullRes = await fetch("/api/sync/full", { cache: "no-store" });
             if (!fullRes.ok) return;
@@ -252,6 +431,9 @@ export const useAppStore = create<AppState>()(
               customFields: fullData.customFields,
               documents: fullData.documents,
             });
+
+            // Fetch fresh vault data
+            get().fetchVaultBackground();
           }
         } catch {
           // Background sync errors fail silently without interrupting user
@@ -269,6 +451,10 @@ export const useAppStore = create<AppState>()(
         customFields: state.customFields,
         documents: state.documents,
         totalDocumentsCount: state.totalDocumentsCount,
+        vaultGroups: state.vaultGroups,
+        vaultParentLinks: state.vaultParentLinks,
+        vaultItems: state.vaultItems,
+        vaultGroupItemLinks: state.vaultGroupItemLinks,
         lastSyncedAt: state.lastSyncedAt,
         isInitialized: state.isInitialized,
       }),

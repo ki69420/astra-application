@@ -135,12 +135,12 @@ export function FilePreview({ documentId, fileName = "Document", isImage = false
                 <span className="truncate">{fileName}</span>
               </DialogTitle>
               <div className="flex items-center gap-2 mr-6 shrink-0">
-                <Button variant="outline" size="sm" className="h-8 text-xs gap-1" asChild>
+                {/* <Button variant="outline" size="sm" className="h-8 text-xs gap-1" asChild>
                   <a href={activeUrl} target="_blank" rel="noreferrer">
                     <ExternalLink className="h-3.5 w-3.5" />
                     Open in Tab
                   </a>
-                </Button>
+                </Button> */}
                 {canNativeShare && (
                   <Button variant="outline" size="sm" onClick={handleShare} className="h-8 text-xs gap-1">
                     <Share2 className="h-3.5 w-3.5" />
