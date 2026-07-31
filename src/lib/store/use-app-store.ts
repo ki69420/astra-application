@@ -184,13 +184,14 @@ export const useAppStore = create<AppState>()(
       isInitialized: false,
 
       hydrateStore: (data) => {
+        if (!data || !Array.isArray(data.students)) return;
         set({
           students: data.students,
           totalEnrolledCount: data.totalEnrolledCount ?? data.students.length,
-          homepageFields: data.homepageFields,
-          searchableFields: data.searchableFields,
-          customFields: data.customFields ?? get().customFields,
-          documents: data.documents ?? get().documents,
+          homepageFields: data.homepageFields || get().homepageFields,
+          searchableFields: data.searchableFields || get().searchableFields,
+          customFields: data.customFields || get().customFields,
+          documents: data.documents || get().documents,
           totalDocumentsCount:
             data.totalDocumentsCount ?? data.documents?.length ?? get().totalDocumentsCount,
           lastSyncedAt: new Date().toISOString(),
@@ -215,11 +216,12 @@ export const useAppStore = create<AppState>()(
       },
 
       hydrateVault: (data) => {
+        if (!data || !Array.isArray(data.groups)) return;
         set({
           vaultGroups: data.groups,
-          vaultParentLinks: data.parentLinks,
-          vaultItems: data.items,
-          vaultGroupItemLinks: data.groupItemLinks,
+          vaultParentLinks: data.parentLinks || [],
+          vaultItems: data.items || [],
+          vaultGroupItemLinks: data.groupItemLinks || [],
         });
 
         const docIds: string[] = [];
@@ -410,15 +412,17 @@ export const useAppStore = create<AppState>()(
       },
 
       fetchVaultBackground: async () => {
+        if (typeof navigator !== "undefined" && !navigator.onLine) return;
         try {
           const res = await fetch("/api/vault/full", { cache: "no-store" });
           if (!res.ok) return;
           const data = await res.json();
+          if (!data || data.error || !Array.isArray(data.groups)) return;
           get().hydrateVault({
             groups: data.groups,
-            parentLinks: data.parentLinks,
-            items: data.items,
-            groupItemLinks: data.groupItemLinks,
+            parentLinks: data.parentLinks || [],
+            items: data.items || [],
+            groupItemLinks: data.groupItemLinks || [],
           });
         } catch {
           // Silent catch
@@ -426,23 +430,24 @@ export const useAppStore = create<AppState>()(
       },
 
       checkAndSyncBackground: async () => {
+        if (typeof navigator !== "undefined" && !navigator.onLine) return;
         try {
           // 1. Light 5ms metadata check across all database tables
           const metaRes = await fetch("/api/sync/meta", { cache: "no-store" });
           if (!metaRes.ok) return;
 
-          const meta = (await metaRes.json()) as {
-            last_updated_at: string;
-            total_students: number;
-            total_fields: number;
-            total_documents: number;
-            total_vault_groups: number;
-            total_vault_items: number;
-          };
+          const meta = await metaRes.json();
+          if (!meta || meta.error || !meta.last_updated_at) return;
+
           const storeLastSync = get().lastSyncedAt;
 
           const serverTime = new Date(meta.last_updated_at).getTime();
           const localTime = storeLastSync ? new Date(storeLastSync).getTime() : 0;
+
+          // Always ensure vault data is pre-fetched if vault store is currently empty
+          if (get().vaultGroups.length === 0) {
+            get().fetchVaultBackground();
+          }
 
           // Sync full data if any table timestamp is newer or any row count changed
           if (
@@ -457,6 +462,8 @@ export const useAppStore = create<AppState>()(
             if (!fullRes.ok) return;
 
             const fullData = await fullRes.json();
+            if (!fullData || fullData.error || !Array.isArray(fullData.students)) return;
+
             get().hydrateStore({
               students: fullData.students,
               homepageFields: fullData.homepageFields,

@@ -9,6 +9,7 @@ import { Pencil, ArrowLeft, Paperclip, Loader2 } from "lucide-react";
 import { FilePreview } from "@/components/documents/file-preview";
 import { formatDisplayDate } from "@/lib/date-utils";
 import { useAppStore } from "@/lib/store/use-app-store";
+import { useNavigationStore } from "@/lib/store/use-navigation-store";
 
 type CFV = {
   id: string;
@@ -106,19 +107,16 @@ export function StudentDetailView({
 }) {
   const storeStudents = useAppStore((s) => s.students);
   const storeCustomFields = useAppStore((s) => s.customFields);
-  const isInitialized = useAppStore((s) => s.isInitialized);
 
   const [fetchedStudent, setFetchedStudent] = React.useState<StudentDetailData | null>(null);
   const [loading, setLoading] = React.useState(false);
 
-  const storeStudent = isInitialized
-    ? storeStudents.find((s) => s.id === studentId)
-    : null;
+  const storeStudent = storeStudents.find((s) => s.id === studentId) || null;
 
   const student = storeStudent || initialStudent || fetchedStudent;
 
   React.useEffect(() => {
-    if (!student && studentId) {
+    if (!student && studentId && typeof navigator !== "undefined" && navigator.onLine) {
       setLoading(true);
       fetch(`/api/students/${studentId}`)
         .then((res) => (res.ok ? res.json() : null))
@@ -227,10 +225,13 @@ export function StudentDetailView({
     <div>
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2 min-w-0">
-          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" asChild>
-            <Link href="/students">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 shrink-0"
+            onClick={() => useNavigationStore.getState().navigateTo("students")}
+          >
+            <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="min-w-0">
             <h1 className="text-base font-bold truncate">{studentName}</h1>

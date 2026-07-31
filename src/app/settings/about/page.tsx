@@ -1,15 +1,28 @@
-import Link from "next/link";
+"use client";
+import * as React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { History, ArrowLeft } from "lucide-react";
+import { useNavigationStore } from "@/lib/store/use-navigation-store";
 
-export default function AboutPage() {
+export function AboutView() {
   const changelogs = [
+    {
+      version: "v1.4.0",
+      date: "01 August 2026",
+      tag: "Current Release",
+      features: [
+        "Single-Shell PWA SPA Architecture: 100% offline client container with 0ms in-memory view transitions and zero server dependencies.",
+        "WhatsApp-Style Offline Queue: Background auto-sync engine using IndexedDB to queue offline changes and flush them when internet reconnects.",
+        "Local Document Search: Real-time search bar in Documents list for filtering stored files by name, type, or extension.",
+        "0ms Local Binary Downloads: Instant PDF/image downloads generated directly from IndexedDB local Blobs.",
+        "Strict Array Guards: Protected Zustand hydration from corrupted network calls during server shutdowns.",
+      ],
+    },
     {
       version: "v1.3.0",
       date: "31 July 2026",
-      tag: "Current Release",
       features: [
         "App-Wide Text Scaling: Senior-friendly text size customization (Normal, Large, Extra Large) saved in local storage.",
         "Admin Vault: N-level recursive folder grouping & multi-parent linking system.",
@@ -48,12 +61,15 @@ export default function AboutPage() {
   ];
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col">
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b px-4 py-3 flex items-center gap-2">
-        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" asChild>
-          <Link href="/settings">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 shrink-0"
+          onClick={() => useNavigationStore.getState().navigateTo("settings")}
+        >
+          <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
           <h1 className="text-base font-bold">About App</h1>
@@ -70,9 +86,10 @@ export default function AboutPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             {[
-              ["Current Version", "1.3.0"],
+              ["Current Version", "1.4.0"],
+              ["Architecture", "Single-Shell PWA SPA (100% Offline)"],
               ["Database", "PostgreSQL via Supabase"],
-              ["Storage", "Supabase Storage (private buckets)"],
+              ["Offline Queue", "IndexedDB Action Queue (Auto-Sync)"],
               ["State Management", "Zustand Global Store (Persistent)"],
               ["Device Cache", "IndexedDB Binary Document Store"],
             ].map(([label, value]) => (
@@ -122,3 +139,5 @@ export default function AboutPage() {
     </div>
   );
 }
+
+export default AboutView;

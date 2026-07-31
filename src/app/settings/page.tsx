@@ -54,7 +54,7 @@ export default function SettingsPage() {
 
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col">
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b px-4 py-3">
         <h1 className="text-lg font-bold leading-tight">Settings</h1>
         <p className="text-xs text-muted-foreground">App preferences &amp; text size controls</p>

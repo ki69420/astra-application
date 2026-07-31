@@ -58,8 +58,8 @@ function SortableItem({ id, title, isGroup }: { id: string; title: string; isGro
 }
 
 export function VaultManageView() {
-  const vaultGroups = useAppStore((s) => s.vaultGroups);
-  const vaultItems = useAppStore((s) => s.vaultItems);
+  const vaultGroups = useAppStore((s) => s.vaultGroups) || [];
+  const vaultItems = useAppStore((s) => s.vaultItems) || [];
   const optimisticUpdateVaultGroup = useAppStore((s) => s.optimisticUpdateVaultGroup);
   const optimisticUpdateVaultItem = useAppStore((s) => s.optimisticUpdateVaultItem);
 

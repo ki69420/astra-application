@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { StudentForm } from "../../student-form";
 import { formatToSlashDate } from "@/lib/date-utils";
 import { useAppStore, type CustomField } from "@/lib/store/use-app-store";
+import { useNavigationStore } from "@/lib/store/use-navigation-store";
 import type { CustomFieldDefinition } from "@prisma/client";
 
 type CFV = {
@@ -72,19 +73,16 @@ export function EditStudentView({
 }) {
   const storeStudents = useAppStore((s) => s.students);
   const storeCustomFields = useAppStore((s) => s.customFields);
-  const isInitialized = useAppStore((s) => s.isInitialized);
 
   const [fetchedStudent, setFetchedStudent] = React.useState<InitialStudentData | null>(null);
   const [loading, setLoading] = React.useState(false);
 
-  const storeStudent = isInitialized
-    ? storeStudents.find((s) => s.id === studentId)
-    : null;
+  const storeStudent = storeStudents.find((s) => s.id === studentId) || null;
 
   const student = storeStudent || initialStudent || fetchedStudent;
 
   React.useEffect(() => {
-    if (!student && studentId) {
+    if (!student && studentId && typeof navigator !== "undefined" && navigator.onLine) {
       setLoading(true);
       fetch(`/api/students/${studentId}`)
         .then((res) => (res.ok ? res.json() : null))
@@ -103,7 +101,7 @@ export function EditStudentView({
   }, [student, studentId]);
 
   const activeCustomFields: CustomFieldDefinition[] = React.useMemo(() => {
-    if (isInitialized && storeCustomFields.length > 0) {
+    if (storeCustomFields.length > 0) {
       return (storeCustomFields as CustomField[]).map((f) => ({
         id: f.id,
         key: f.key,
@@ -119,7 +117,7 @@ export function EditStudentView({
       }));
     }
     return initialCustomFields || [];
-  }, [isInitialized, storeCustomFields, initialCustomFields]);
+  }, [storeCustomFields, initialCustomFields]);
 
   const defaultValues: Record<string, unknown> = React.useMemo(() => {
     const vals: Record<string, unknown> = { name: student?.name || "" };
@@ -177,10 +175,13 @@ export function EditStudentView({
   return (
     <div>
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b px-4 py-3 flex items-center gap-2">
-        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" asChild>
-          <Link href={`/students/${studentId}`}>
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 shrink-0"
+          onClick={() => useNavigationStore.getState().navigateTo("student-detail", { studentId })}
+        >
+          <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
           <h1 className="text-base font-bold">Edit Student</h1>

@@ -35,7 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <StoreSyncProvider>
           <div className="bg-background">
             <OfflineBanner />
-            <main className="pb-20">{children}</main>
+            <main>{children}</main>
             <BottomNav />
           </div>
           <Toaster />

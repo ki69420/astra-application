@@ -1,9 +1,10 @@
 "use client";
 import * as React from "react";
 import { format } from "date-fns";
-import { FileText } from "lucide-react";
+import { FileText, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { useAppStore, type DocumentRow } from "@/lib/store/use-app-store";
 import { FilePreview } from "@/components/documents/file-preview";
 
@@ -18,6 +19,8 @@ export function DocumentsList({ initialDocuments }: { initialDocuments: Document
   const storeDocumentsCount = useAppStore((s) => s.totalDocumentsCount);
   const isInitialized = useAppStore((s) => s.isInitialized);
 
+  const [searchQuery, setSearchQuery] = React.useState("");
+
   const displayDocuments =
     isInitialized && storeDocuments.length > 0
       ? (storeDocuments as DocumentRow[])
@@ -25,21 +28,47 @@ export function DocumentsList({ initialDocuments }: { initialDocuments: Document
 
   const displayCount = isInitialized ? storeDocumentsCount : initialDocuments.length;
 
+  const filteredDocuments = React.useMemo(() => {
+    if (!searchQuery.trim()) return displayDocuments;
+    const q = searchQuery.toLowerCase().trim();
+    return displayDocuments.filter(
+      (doc) =>
+        doc.original_name.toLowerCase().includes(q) ||
+        doc.extension?.toLowerCase().includes(q) ||
+        doc.mime_type?.toLowerCase().includes(q),
+    );
+  }, [displayDocuments, searchQuery]);
+
   return (
-    <div className="flex flex-col min-h-screen">
-      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b px-4 py-3">
-        <h1 className="text-lg font-bold leading-tight">Documents</h1>
-        <p className="text-xs text-muted-foreground">{displayCount} files stored</p>
+    <div className="flex flex-col">
+      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b px-4 py-3 space-y-2">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-lg font-bold leading-tight">Documents</h1>
+            <p className="text-xs text-muted-foreground">{displayCount} files stored</p>
+          </div>
+        </div>
+
+        {/* Real-time Document Search Bar */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            placeholder="Search documents by name or file type..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 h-9 text-xs"
+          />
+        </div>
       </header>
 
       <div className="px-4 py-4">
-        {displayDocuments.length === 0 ? (
+        {filteredDocuments.length === 0 ? (
           <div className="text-center py-16 text-muted-foreground text-sm">
-            No documents uploaded yet.
+            {searchQuery ? "No documents match your search." : "No documents uploaded yet."}
           </div>
         ) : (
           <div className="space-y-2">
-            {displayDocuments.map((doc) => {
+            {filteredDocuments.map((doc) => {
               const isImage = ["jpg", "jpeg", "png", "webp", "gif", "svg"].includes(
                 doc.extension?.toLowerCase() || ""
               );

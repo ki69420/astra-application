@@ -1,8 +1,7 @@
 "use client";
 import * as React from "react";
-import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
 import { Button, type ButtonProps } from "@/components/ui/button";
+import { useNavigationStore, resolveHrefToNavigation } from "@/lib/store/use-navigation-store";
 
 interface NavButtonProps extends ButtonProps {
   href: string;
@@ -12,23 +11,18 @@ interface NavButtonProps extends ButtonProps {
 
 export function NavButton({
   href,
-  loadingText,
   children,
   className,
   variant = "default",
   size = "sm",
   ...props
 }: NavButtonProps) {
-  const router = useRouter();
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [, startTransition] = React.useTransition();
+  const navigateTo = useNavigationStore((s) => s.navigateTo);
 
   const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
-    setIsLoading(true);
-    startTransition(() => {
-      router.push(href);
-    });
+    const nav = resolveHrefToNavigation(href);
+    navigateTo(nav.view, { studentId: nav.studentId, fieldId: nav.fieldId });
   };
 
   return (
@@ -36,18 +30,10 @@ export function NavButton({
       variant={variant}
       size={size}
       className={className}
-      disabled={isLoading}
       onClick={handleClick}
       {...props}
     >
-      {isLoading ? (
-        <>
-          <Loader2 className="h-4 w-4 mr-1 animate-spin shrink-0" />
-          {loadingText ?? children}
-        </>
-      ) : (
-        children
-      )}
+      {children}
     </Button>
   );
 }

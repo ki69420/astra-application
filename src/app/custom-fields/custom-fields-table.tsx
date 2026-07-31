@@ -20,11 +20,13 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, ChevronRight, Loader2 } from "lucide-react";
+import { GripVertical, ChevronRight, Loader2, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/components/ui/use-toast";
 import { useRouter } from "next/navigation";
+import { useNavigationStore } from "@/lib/store/use-navigation-store";
+import { NavButton } from "@/components/ui/nav-button";
 
 type Field = {
   id: string;
@@ -60,10 +62,7 @@ function SortableCard({ field }: { field: Field }) {
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-    startTransition(() => {
-      router.push(`/custom-fields/${field.id}`);
-    });
+    useNavigationStore.getState().navigateTo("custom-field-edit", { fieldId: field.id });
   };
 
   return (
@@ -135,7 +134,7 @@ function OverlayCard({ field }: { field: Field }) {
 
 import { useAppStore } from "@/lib/store/use-app-store";
 
-export function CustomFieldsTable({ fields: initialFields }: { fields: Field[] }) {
+export function CustomFieldsTable({ fields: initialFields = [] }: { fields?: Field[] }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const storeCustomFields = useAppStore((s) => s.customFields);
@@ -191,30 +190,51 @@ export function CustomFieldsTable({ fields: initialFields }: { fields: Field[] }
   }
 
   return (
-    <div className="space-y-3">
-      <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-        <GripVertical className="h-3.5 w-3.5" />
-        Drag to reorder
-      </p>
-      <ClientOnly>
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext items={fields.map((f) => f.id)} strategy={verticalListSortingStrategy}>
-            <div className="space-y-2">
-              {fields.map((f) => (
-                <SortableCard key={f.id} field={f} />
-              ))}
-            </div>
-          </SortableContext>
-          <DragOverlay dropAnimation={{ duration: 150, easing: "ease" }}>
-            {activeField ? <OverlayCard field={activeField} /> : null}
-          </DragOverlay>
-        </DndContext>
-      </ClientOnly>
+    <div>
+      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b px-4 py-3 flex items-center justify-between">
+        <div>
+          <h1 className="text-lg font-bold leading-tight">Custom Fields</h1>
+          <p className="text-xs text-muted-foreground">{fields.length} fields defined</p>
+        </div>
+        <NavButton href="/custom-fields/new">
+          <Plus className="h-4 w-4 mr-1" />
+          Add
+        </NavButton>
+      </header>
+
+      <div className="px-4 py-4 space-y-3">
+        {fields.length === 0 ? (
+          <div className="text-center py-16 text-muted-foreground text-sm">
+            No custom fields defined yet.
+          </div>
+        ) : (
+          <>
+            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+              <GripVertical className="h-3.5 w-3.5" />
+              Drag to reorder
+            </p>
+            <ClientOnly>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext items={fields.map((f) => f.id)} strategy={verticalListSortingStrategy}>
+                  <div className="space-y-2">
+                    {fields.map((f) => (
+                      <SortableCard key={f.id} field={f} />
+                    ))}
+                  </div>
+                </SortableContext>
+                <DragOverlay dropAnimation={{ duration: 150, easing: "ease" }}>
+                  {activeField ? <OverlayCard field={activeField} /> : null}
+                </DragOverlay>
+              </DndContext>
+            </ClientOnly>
+          </>
+        )}
+      </div>
     </div>
   );
 }

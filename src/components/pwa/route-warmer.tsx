@@ -16,18 +16,19 @@ export function RouteWarmer() {
   const router = useRouter();
 
   React.useEffect(() => {
-    // Only prefetch when client is online
+    // Only prefetch when client is online and window is loaded
     if (typeof window === "undefined" || !navigator.onLine) return;
 
     const timer = setTimeout(() => {
       for (const route of CORE_ROUTES) {
         try {
           router.prefetch(route);
+          fetch(route, { cache: "force-cache" }).catch(() => {});
         } catch {
           // Ignore prefetch failures
         }
       }
-    }, 2000);
+    }, 1500);
 
     return () => clearTimeout(timer);
   }, [router]);

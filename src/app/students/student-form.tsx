@@ -9,8 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/components/ui/use-toast";
-import { Loader2, Trash2, RefreshCw } from "lucide-react";
+import { Loader2, Trash2, RefreshCw, ArrowLeft } from "lucide-react";
 import { useAppStore, type StudentRow } from "@/lib/store/use-app-store";
+import { useNavigationStore } from "@/lib/store/use-navigation-store";
+import { enqueueAction } from "@/lib/sync/offline-queue";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -100,10 +102,10 @@ export function StudentForm({ customFields, defaultValues, studentId }: StudentF
       });
     }
 
-    router.push("/students");
+    useNavigationStore.getState().navigateTo("students");
     toast({ title: studentId ? "Student updated" : "Student created" });
 
-    // 2. BACKGROUND Async save to Database
+    // 2. BACKGROUND Async save to Database or Offline Queue
     try {
       const payload: Record<string, unknown> = {};
       for (const [key, value] of Object.entries(data)) {
@@ -117,29 +119,28 @@ export function StudentForm({ customFields, defaultValues, studentId }: StudentF
 
       const url = studentId ? `/api/students/${studentId}` : "/api/students";
       const method = studentId ? "PATCH" : "POST";
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        toast({
-          variant: "destructive",
-          title: "Save error",
-          description: JSON.stringify(err.error || err),
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        await enqueueAction(studentId ? "UPDATE_STUDENT" : "CREATE_STUDENT", url, method, payload);
+      } else {
+        const res = await fetch(url, {
+          method,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
         });
+
+        if (!res.ok) {
+          await enqueueAction(studentId ? "UPDATE_STUDENT" : "CREATE_STUDENT", url, method, payload);
+        }
       }
 
       // Re-sync background timestamp
       checkAndSyncBackground();
-    } catch (err) {
-      toast({
-        variant: "destructive",
-        title: "Background save error",
-        description: String(err),
-      });
+    } catch {
+      // Offline fallback
+      const url = studentId ? `/api/students/${studentId}` : "/api/students";
+      const method = studentId ? "PATCH" : "POST";
+      await enqueueAction(studentId ? "UPDATE_STUDENT" : "CREATE_STUDENT", url, method, data);
     }
   }
 
@@ -148,29 +149,68 @@ export function StudentForm({ customFields, defaultValues, studentId }: StudentF
 
     // 1. INSTANT Optimistic Delete & Redirect
     optimisticDeleteStudent(studentId);
-    router.push("/students");
+    useNavigationStore.getState().navigateTo("students");
     toast({ title: "Student deleted" });
 
-    // 2. BACKGROUND Async DB Delete
+    // 2. BACKGROUND Async DB Delete or Offline Queue
     try {
-      const res = await fetch(`/api/students/${studentId}`, { method: "DELETE" });
-      if (!res.ok) {
-        toast({ variant: "destructive", title: "Delete error" });
+      const url = `/api/students/${studentId}`;
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        await enqueueAction("DELETE_STUDENT", url, "DELETE", null);
+      } else {
+        const res = await fetch(url, { method: "DELETE" });
+        if (!res.ok) {
+          await enqueueAction("DELETE_STUDENT", url, "DELETE", null);
+        }
       }
       checkAndSyncBackground();
-    } catch (err) {
-      toast({
-        variant: "destructive",
-        title: "Background delete error",
-        description: String(err),
-      });
+    } catch {
+      await enqueueAction("DELETE_STUDENT", `/api/students/${studentId}`, "DELETE", null);
     }
   };
 
-  const visibleFields = customFields.filter((f) => f.is_active);
+  const storeCustomFields = useAppStore((s) => s.customFields);
+
+  const visibleFields: CustomFieldDefinition[] = React.useMemo(() => {
+    if (customFields && customFields.length > 0) {
+      return customFields.filter((f) => f.is_active);
+    }
+    return (storeCustomFields || []).map((f) => ({
+      id: f.id,
+      key: f.key,
+      label: f.label,
+      field_type: f.field_type as never,
+      show_in_homepage: f.show_in_homepage,
+      is_searchable: f.is_searchable,
+      display_order: f.display_order,
+      options_json: f.options_json as never,
+      is_active: true,
+      created_at: new Date(),
+      updated_at: new Date(),
+    }));
+  }, [customFields, storeCustomFields]);
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 px-4 py-4">
+    <div>
+      {!studentId && (
+        <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b px-4 py-3 flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 shrink-0"
+            type="button"
+            onClick={() => useNavigationStore.getState().navigateTo("students")}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <h1 className="text-base font-bold">Add New Student</h1>
+            <p className="text-xs text-muted-foreground">Fill in student profile &amp; custom fields</p>
+          </div>
+        </header>
+      )}
+
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 px-4 py-4">
       {!isInitialized && (
         <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/60 border text-xs text-muted-foreground">
           <RefreshCw className="h-3.5 w-3.5 animate-spin text-primary shrink-0" />
@@ -244,10 +284,16 @@ export function StudentForm({ customFields, defaultValues, studentId }: StudentF
           </AlertDialog>
         )}
 
-        <Button type="button" variant="outline" className="h-11 px-5" onClick={() => router.back()}>
+        <Button
+          type="button"
+          variant="outline"
+          className="h-11 px-5"
+          onClick={() => useNavigationStore.getState().goBack()}
+        >
           Cancel
         </Button>
       </div>
     </form>
+  </div>
   );
 }

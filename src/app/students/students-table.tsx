@@ -74,6 +74,7 @@ function renderValue(value: StudentRow["values"][string] | undefined) {
 }
 
 import { useAppStore } from "@/lib/store/use-app-store";
+import { useNavigationStore } from "@/lib/store/use-navigation-store";
 
 export function StudentsTable({
   data,
@@ -133,12 +134,10 @@ export function StudentsTable({
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const slice = filtered.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
 
-  const handleCardClick = (e: React.MouseEvent, id: string, href: string) => {
+  const handleCardClick = (e: React.MouseEvent, id: string) => {
     e.preventDefault();
-    setLoadingStudentId(id);
-    startTransition(() => {
-      router.push(href);
-    });
+    const nav = useNavigationStore.getState();
+    nav.navigateTo("student-detail", { studentId: id });
   };
 
   const handleFilterChange = (key: string, val: string) => {
@@ -362,7 +361,7 @@ export function StudentsTable({
                 <Link
                   key={student.id}
                   href={href}
-                  onClick={(e) => handleCardClick(e, student.id, href)}
+                  onClick={(e) => handleCardClick(e, student.id)}
                   className="block"
                 >
                   <Card

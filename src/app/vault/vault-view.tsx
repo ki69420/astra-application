@@ -53,10 +53,10 @@ const ICON_MAP: Record<string, React.ElementType> = {
 };
 
 export function VaultView() {
-  const vaultGroups = useAppStore((s) => s.vaultGroups);
-  const vaultParentLinks = useAppStore((s) => s.vaultParentLinks);
-  const vaultItems = useAppStore((s) => s.vaultItems);
-  const vaultGroupItemLinks = useAppStore((s) => s.vaultGroupItemLinks);
+  const vaultGroups = useAppStore((s) => s.vaultGroups) || [];
+  const vaultParentLinks = useAppStore((s) => s.vaultParentLinks) || [];
+  const vaultItems = useAppStore((s) => s.vaultItems) || [];
+  const vaultGroupItemLinks = useAppStore((s) => s.vaultGroupItemLinks) || [];
   const isInitialized = useAppStore((s) => s.isInitialized);
   const fetchVaultBackground = useAppStore((s) => s.fetchVaultBackground);
   const optimisticDeleteVaultGroup = useAppStore((s) => s.optimisticDeleteVaultGroup);
@@ -149,12 +149,12 @@ export function VaultView() {
 
   // Multi-parent helper
   const getParentNamesForGroup = (groupId: string) => {
-    const parentIds = vaultParentLinks.filter((l) => l.child_id === groupId).map((l) => l.parent_id);
+    const parentIds = (vaultParentLinks || []).filter((l) => l.child_id === groupId).map((l) => l.parent_id);
     return parentIds.map((pId) => groupMap.get(pId)?.title).filter(Boolean) as string[];
   };
 
   const getParentNamesForItem = (itemId: string) => {
-    const parentGroupIds = vaultGroupItemLinks.filter((l) => l.item_id === itemId).map((l) => l.group_id);
+    const parentGroupIds = (vaultGroupItemLinks || []).filter((l) => l.item_id === itemId).map((l) => l.group_id);
     return parentGroupIds.map((gId) => groupMap.get(gId)?.title).filter(Boolean) as string[];
   };
 
@@ -182,7 +182,7 @@ export function VaultView() {
   const currentGroupObj = currentGroupId ? groupMap.get(currentGroupId) : null;
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b px-4 py-3 space-y-2">
         <div className="flex items-center justify-between gap-2">
