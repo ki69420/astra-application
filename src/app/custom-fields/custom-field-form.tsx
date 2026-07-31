@@ -1,7 +1,7 @@
 "use client";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Loader2 } from "lucide-react";
+import { Plus, Trash2, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,6 +42,7 @@ interface CustomFieldFormProps {
 
 export function CustomFieldForm({ defaultValues, fieldId }: CustomFieldFormProps) {
   const router = useRouter();
+  const isInitialized = useAppStore((s) => s.isInitialized);
   const optimisticAddCustomField = useAppStore((s) => s.optimisticAddCustomField);
   const optimisticUpdateCustomField = useAppStore((s) => s.optimisticUpdateCustomField);
   const checkAndSyncBackground = useAppStore((s) => s.checkAndSyncBackground);
@@ -121,6 +122,13 @@ export function CustomFieldForm({ defaultValues, fieldId }: CustomFieldFormProps
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 px-4 py-4">
+      {!isInitialized && (
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/60 border text-xs text-muted-foreground">
+          <RefreshCw className="h-3.5 w-3.5 animate-spin text-primary shrink-0" />
+          <span>If any field settings are missing, please wait a moment — initial data is downloading in the background.</span>
+        </div>
+      )}
+
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Field Definition</CardTitle>

@@ -10,6 +10,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { PdfViewer } from "./pdf-viewer";
+import { getCachedDocumentBlob, setCachedDocumentBlob } from "@/lib/document-cache";
 
 interface FilePreviewProps {
   documentId: string;
@@ -19,14 +20,61 @@ interface FilePreviewProps {
 
 export function FilePreview({ documentId, fileName = "Document", isImage = false }: FilePreviewProps) {
   const [isOpen, setIsOpen] = React.useState(false);
-  const viewUrl = `/api/documents/${documentId}/view`;
+  const [activeUrl, setActiveUrl] = React.useState<string>(`/api/documents/${documentId}/view`);
+  const [cachedBlob, setCachedBlob] = React.useState<Blob | null>(null);
+
   const downloadUrl = `/api/documents/${documentId}/download`;
+
+  React.useEffect(() => {
+    let isMounted = true;
+    let createdUrl: string | null = null;
+
+    async function loadCachedFile() {
+      if (!documentId) return;
+
+      // 1. Check IndexedDB device storage first
+      const localBlob = await getCachedDocumentBlob(documentId);
+      if (localBlob && isMounted) {
+        setCachedBlob(localBlob);
+        createdUrl = URL.createObjectURL(localBlob);
+        setActiveUrl(createdUrl);
+        return;
+      }
+
+      // 2. Fetch from server and store into IndexedDB
+      try {
+        const res = await fetch(`/api/documents/${documentId}/view`);
+        if (!res.ok) return;
+        const freshBlob = await res.blob();
+        if (!isMounted) return;
+
+        await setCachedDocumentBlob(documentId, freshBlob);
+        setCachedBlob(freshBlob);
+        createdUrl = URL.createObjectURL(freshBlob);
+        setActiveUrl(createdUrl);
+      } catch {
+        // Fallback to default endpoint if offline fetch fails
+      }
+    }
+
+    loadCachedFile();
+
+    return () => {
+      isMounted = false;
+      if (createdUrl) URL.revokeObjectURL(createdUrl);
+    };
+  }, [documentId]);
 
   const handleShare = async () => {
     try {
-      const res = await fetch(downloadUrl);
-      if (!res.ok) return;
-      const blob = await res.blob();
+      let blob = cachedBlob;
+      if (!blob) {
+        const res = await fetch(downloadUrl);
+        if (!res.ok) return;
+        blob = await res.blob();
+        setCachedDocumentBlob(documentId, blob);
+      }
+
       const mimeType = isImage ? (blob.type || "image/jpeg") : (blob.type || "application/pdf");
       let finalFileName = fileName;
       if (!finalFileName.includes(".")) {
@@ -58,7 +106,7 @@ export function FilePreview({ documentId, fileName = "Document", isImage = false
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={viewUrl}
+              src={activeUrl}
               alt={fileName}
               className="h-full w-full object-cover"
             />
@@ -88,7 +136,7 @@ export function FilePreview({ documentId, fileName = "Document", isImage = false
               </DialogTitle>
               <div className="flex items-center gap-2 mr-6 shrink-0">
                 <Button variant="outline" size="sm" className="h-8 text-xs gap-1" asChild>
-                  <a href={viewUrl} target="_blank" rel="noreferrer">
+                  <a href={activeUrl} target="_blank" rel="noreferrer">
                     <ExternalLink className="h-3.5 w-3.5" />
                     Open in Tab
                   </a>
@@ -112,12 +160,12 @@ export function FilePreview({ documentId, fileName = "Document", isImage = false
               {isImage ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={viewUrl}
+                  src={activeUrl}
                   alt={fileName}
                   className="max-h-full max-w-full object-contain rounded"
                 />
               ) : (
-                <PdfViewer url={viewUrl} />
+                <PdfViewer url={activeUrl} />
               )}
             </div>
           </DialogContent>

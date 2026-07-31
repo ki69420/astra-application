@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
 
 export type HomepageField = {
   id: string;
@@ -99,159 +100,178 @@ interface AppState {
   checkAndSyncBackground: () => Promise<void>;
 }
 
-export const useAppStore = create<AppState>((set, get) => ({
-  students: [],
-  totalEnrolledCount: 0,
-  homepageFields: [],
-  searchableFields: [],
-  customFields: [],
-  documents: [],
-  totalDocumentsCount: 0,
-  lastSyncedAt: null,
-  isInitialized: false,
+export const useAppStore = create<AppState>()(
+  persist(
+    (set, get) => ({
+      students: [],
+      totalEnrolledCount: 0,
+      homepageFields: [],
+      searchableFields: [],
+      customFields: [],
+      documents: [],
+      totalDocumentsCount: 0,
+      lastSyncedAt: null,
+      isInitialized: false,
 
-  hydrateStore: (data) => {
-    set({
-      students: data.students,
-      totalEnrolledCount: data.totalEnrolledCount ?? data.students.length,
-      homepageFields: data.homepageFields,
-      searchableFields: data.searchableFields,
-      customFields: data.customFields ?? get().customFields,
-      documents: data.documents ?? get().documents,
-      totalDocumentsCount:
-        data.totalDocumentsCount ?? data.documents?.length ?? get().totalDocumentsCount,
-      lastSyncedAt: new Date().toISOString(),
-      isInitialized: true,
-    });
-  },
-
-  optimisticAddStudent: (newStudent) => {
-    set((state) => ({
-      students: [newStudent, ...state.students],
-      totalEnrolledCount: state.totalEnrolledCount + 1,
-    }));
-  },
-
-  optimisticUpdateStudent: (id, name, newValues) => {
-    set((state) => ({
-      students: state.students.map((s) => {
-        if (s.id !== id) return s;
-        return {
-          ...s,
-          name,
-          values: newValues ? { ...s.values, ...newValues } : s.values,
-        };
-      }),
-    }));
-  },
-
-  optimisticDeleteStudent: (id) => {
-    set((state) => ({
-      students: state.students.filter((s) => s.id !== id),
-      totalEnrolledCount: Math.max(0, state.totalEnrolledCount - 1),
-    }));
-  },
-
-  optimisticAddCustomField: (newField) => {
-    set((state) => {
-      const nextCustomFields = [...state.customFields, newField];
-      const nextHomepage = newField.show_in_homepage
-        ? [
-            ...state.homepageFields,
-            {
-              id: newField.id,
-              key: newField.key,
-              label: newField.label,
-              field_type: newField.field_type,
-            },
-          ]
-        : state.homepageFields;
-      const nextSearchable = newField.is_searchable
-        ? [
-            ...state.searchableFields,
-            {
-              id: newField.id,
-              key: newField.key,
-              label: newField.label,
-              field_type: newField.field_type,
-              options_json: newField.options_json,
-            },
-          ]
-        : state.searchableFields;
-
-      return {
-        customFields: nextCustomFields,
-        homepageFields: nextHomepage,
-        searchableFields: nextSearchable,
-      };
-    });
-  },
-
-  optimisticUpdateCustomField: (id, updatedProps) => {
-    set((state) => {
-      const nextCustomFields = state.customFields.map((f) =>
-        f.id === id ? { ...f, ...updatedProps } : f,
-      );
-      return { customFields: nextCustomFields };
-    });
-  },
-
-  optimisticReorderCustomFields: (reordered) => {
-    set({ customFields: reordered });
-  },
-
-  optimisticAddDocument: (doc) => {
-    set((state) => ({
-      documents: [doc, ...state.documents],
-      totalDocumentsCount: state.totalDocumentsCount + 1,
-    }));
-  },
-
-  optimisticDeleteDocument: (id) => {
-    set((state) => ({
-      documents: state.documents.filter((d) => d.id !== id),
-      totalDocumentsCount: Math.max(0, state.totalDocumentsCount - 1),
-    }));
-  },
-
-  checkAndSyncBackground: async () => {
-    try {
-      // 1. Light 5ms metadata check across all database tables
-      const metaRes = await fetch("/api/sync/meta", { cache: "no-store" });
-      if (!metaRes.ok) return;
-
-      const meta = (await metaRes.json()) as {
-        last_updated_at: string;
-        total_students: number;
-        total_fields: number;
-        total_documents: number;
-      };
-      const storeLastSync = get().lastSyncedAt;
-
-      const serverTime = new Date(meta.last_updated_at).getTime();
-      const localTime = storeLastSync ? new Date(storeLastSync).getTime() : 0;
-
-      // Sync full data if any table timestamp is newer or any row count changed
-      if (
-        serverTime > localTime ||
-        meta.total_students !== get().totalEnrolledCount ||
-        meta.total_fields !== get().customFields.length ||
-        meta.total_documents !== get().totalDocumentsCount
-      ) {
-        const fullRes = await fetch("/api/sync/full", { cache: "no-store" });
-        if (!fullRes.ok) return;
-
-        const fullData = await fullRes.json();
-        get().hydrateStore({
-          students: fullData.students,
-          homepageFields: fullData.homepageFields,
-          searchableFields: fullData.searchableFields,
-          customFields: fullData.customFields,
-          documents: fullData.documents,
+      hydrateStore: (data) => {
+        set({
+          students: data.students,
+          totalEnrolledCount: data.totalEnrolledCount ?? data.students.length,
+          homepageFields: data.homepageFields,
+          searchableFields: data.searchableFields,
+          customFields: data.customFields ?? get().customFields,
+          documents: data.documents ?? get().documents,
+          totalDocumentsCount:
+            data.totalDocumentsCount ?? data.documents?.length ?? get().totalDocumentsCount,
+          lastSyncedAt: new Date().toISOString(),
+          isInitialized: true,
         });
-      }
-    } catch {
-      // Background sync errors fail silently without interrupting user
-    }
-  },
-}));
+      },
+
+      optimisticAddStudent: (newStudent) => {
+        set((state) => ({
+          students: [newStudent, ...state.students],
+          totalEnrolledCount: state.totalEnrolledCount + 1,
+        }));
+      },
+
+      optimisticUpdateStudent: (id, name, newValues) => {
+        set((state) => ({
+          students: state.students.map((s) => {
+            if (s.id !== id) return s;
+            return {
+              ...s,
+              name,
+              values: newValues ? { ...s.values, ...newValues } : s.values,
+            };
+          }),
+        }));
+      },
+
+      optimisticDeleteStudent: (id) => {
+        set((state) => ({
+          students: state.students.filter((s) => s.id !== id),
+          totalEnrolledCount: Math.max(0, state.totalEnrolledCount - 1),
+        }));
+      },
+
+      optimisticAddCustomField: (newField) => {
+        set((state) => {
+          const nextCustomFields = [...state.customFields, newField];
+          const nextHomepage = newField.show_in_homepage
+            ? [
+                ...state.homepageFields,
+                {
+                  id: newField.id,
+                  key: newField.key,
+                  label: newField.label,
+                  field_type: newField.field_type,
+                },
+              ]
+            : state.homepageFields;
+          const nextSearchable = newField.is_searchable
+            ? [
+                ...state.searchableFields,
+                {
+                  id: newField.id,
+                  key: newField.key,
+                  label: newField.label,
+                  field_type: newField.field_type,
+                  options_json: newField.options_json,
+                },
+              ]
+            : state.searchableFields;
+
+          return {
+            customFields: nextCustomFields,
+            homepageFields: nextHomepage,
+            searchableFields: nextSearchable,
+          };
+        });
+      },
+
+      optimisticUpdateCustomField: (id, updatedProps) => {
+        set((state) => {
+          const nextCustomFields = state.customFields.map((f) =>
+            f.id === id ? { ...f, ...updatedProps } : f,
+          );
+          return { customFields: nextCustomFields };
+        });
+      },
+
+      optimisticReorderCustomFields: (reordered) => {
+        set({ customFields: reordered });
+      },
+
+      optimisticAddDocument: (doc) => {
+        set((state) => ({
+          documents: [doc, ...state.documents],
+          totalDocumentsCount: state.totalDocumentsCount + 1,
+        }));
+      },
+
+      optimisticDeleteDocument: (id) => {
+        set((state) => ({
+          documents: state.documents.filter((d) => d.id !== id),
+          totalDocumentsCount: Math.max(0, state.totalDocumentsCount - 1),
+        }));
+      },
+
+      checkAndSyncBackground: async () => {
+        try {
+          // 1. Light 5ms metadata check across all database tables
+          const metaRes = await fetch("/api/sync/meta", { cache: "no-store" });
+          if (!metaRes.ok) return;
+
+          const meta = (await metaRes.json()) as {
+            last_updated_at: string;
+            total_students: number;
+            total_fields: number;
+            total_documents: number;
+          };
+          const storeLastSync = get().lastSyncedAt;
+
+          const serverTime = new Date(meta.last_updated_at).getTime();
+          const localTime = storeLastSync ? new Date(storeLastSync).getTime() : 0;
+
+          // Sync full data if any table timestamp is newer or any row count changed
+          if (
+            serverTime > localTime ||
+            meta.total_students !== get().totalEnrolledCount ||
+            meta.total_fields !== get().customFields.length ||
+            meta.total_documents !== get().totalDocumentsCount
+          ) {
+            const fullRes = await fetch("/api/sync/full", { cache: "no-store" });
+            if (!fullRes.ok) return;
+
+            const fullData = await fullRes.json();
+            get().hydrateStore({
+              students: fullData.students,
+              homepageFields: fullData.homepageFields,
+              searchableFields: fullData.searchableFields,
+              customFields: fullData.customFields,
+              documents: fullData.documents,
+            });
+          }
+        } catch {
+          // Background sync errors fail silently without interrupting user
+        }
+      },
+    }),
+    {
+      name: "astra-app-store-v1",
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({
+        students: state.students,
+        totalEnrolledCount: state.totalEnrolledCount,
+        homepageFields: state.homepageFields,
+        searchableFields: state.searchableFields,
+        customFields: state.customFields,
+        documents: state.documents,
+        totalDocumentsCount: state.totalDocumentsCount,
+        lastSyncedAt: state.lastSyncedAt,
+        isInitialized: state.isInitialized,
+      }),
+    },
+  ),
+);
