@@ -519,9 +519,9 @@ export function VaultView() {
               </Button>
             ) : (
               <>
-                <Button variant="outline" size="sm" onClick={() => setIsReorderMode(true)} className="h-8 text-xs">
+                {/* <Button variant="outline" size="sm" onClick={() => setIsReorderMode(true)} className="h-8 text-xs">
                   Reorder
-                </Button>
+                </Button> */}
                 <Button
                   variant="outline"
                   size="sm"
@@ -594,11 +594,11 @@ export function VaultView() {
               </React.Fragment>
             ))}
           </div>
-          {isReorderMode && (
+          {/* {isReorderMode && (
             <span className="text-[11px] font-medium text-primary animate-pulse shrink-0">
               Reorder Mode Active
             </span>
-          )}
+          )} */}
         </div>
       )}
 
