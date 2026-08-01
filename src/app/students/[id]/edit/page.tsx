@@ -1,21 +1,18 @@
 "use client";
 import React from "react";
 import { useParams } from "next/navigation";
-import { EditStudentView } from "./edit-student-view";
+import RootMasterAppShell from "@/app/page";
+import { useNavigationStore } from "@/lib/store/use-navigation-store";
 
-export default function EditStudentPage() {
+export default function EditStudentRoutePage() {
   const params = useParams();
   const id = (params?.id as string) || "";
 
-  const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => {
-    setMounted(true);
-  }, []);
+    if (id) {
+      useNavigationStore.setState({ activeView: "student-edit", activeStudentId: id });
+    }
+  }, [id]);
 
-  if (!mounted) {
-    return <div className="min-h-screen bg-background" />;
-  }
-
-  return <EditStudentView studentId={id} />;
+  return <RootMasterAppShell />;
 }
-

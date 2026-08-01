@@ -1,39 +1,12 @@
-import Link from "next/link";
-import { prisma } from "@/lib/prisma";
-import { NavButton } from "@/components/ui/nav-button";
-import { Plus } from "lucide-react";
-import { CustomFieldsTable } from "./custom-fields-table";
+"use client";
+import React from "react";
+import RootMasterAppShell from "../page";
+import { useNavigationStore } from "@/lib/store/use-navigation-store";
 
+export default function CustomFieldsRoutePage() {
+  React.useEffect(() => {
+    useNavigationStore.setState({ activeView: "custom-fields" });
+  }, []);
 
-
-export default async function CustomFieldsPage() {
-  const fields = await prisma.customFieldDefinition.findMany({
-    orderBy: [{ display_order: "asc" }, { label: "asc" }],
-  });
-
-  return (
-    <div>
-      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b px-4 py-3 flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-bold leading-tight">Custom Fields</h1>
-          <p className="text-xs text-muted-foreground">{fields.length} fields defined</p>
-        </div>
-        <NavButton href="/custom-fields/new">
-          <Plus className="h-4 w-4 mr-1" />
-          Add
-        </NavButton>
-      </header>
-
-      <div className="px-4 py-4">
-        {fields.length === 0 ? (
-          <div className="text-center py-16 text-muted-foreground text-sm">
-            No custom fields yet.{" "}
-            <Link href="/custom-fields/new" className="text-primary hover:underline">Add one</Link>.
-          </div>
-        ) : (
-          <CustomFieldsTable fields={fields} />
-        )}
-      </div>
-    </div>
-  );
+  return <RootMasterAppShell />;
 }

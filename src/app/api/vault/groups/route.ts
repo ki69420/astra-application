@@ -50,15 +50,22 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, title, description, icon, display_order, parent_ids } = body;
+    const { id, title, description, icon, display_order, parent_ids, parent_id } = body;
 
     if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });
+
+    if (parent_id && display_order !== undefined) {
+      await prisma.vaultGroupParentChild.updateMany({
+        where: { parent_id: String(parent_id), child_id: id },
+        data: { display_order: Number(display_order) },
+      });
+    }
 
     const updateData: Record<string, unknown> = {};
     if (title !== undefined) updateData.title = String(title).trim();
     if (description !== undefined) updateData.description = String(description).trim() || null;
     if (icon !== undefined) updateData.icon = String(icon).trim();
-    if (display_order !== undefined) updateData.display_order = Number(display_order);
+    if (display_order !== undefined && !parent_id) updateData.display_order = Number(display_order);
 
     const group = await prisma.vaultGroup.update({
       where: { id },

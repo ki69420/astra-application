@@ -1,17 +1,12 @@
 "use client";
 import React from "react";
-import { VaultView } from "./vault-view";
+import RootMasterAppShell from "../page";
+import { useNavigationStore } from "@/lib/store/use-navigation-store";
 
-export default function VaultPage() {
-  const [mounted, setMounted] = React.useState(false);
+export default function VaultRoutePage() {
   React.useEffect(() => {
-    setMounted(true);
+    useNavigationStore.setState({ activeView: "vault" });
   }, []);
 
-  if (!mounted) {
-    return <div className="min-h-screen bg-background" />;
-  }
-
-  return <VaultView />;
+  return <RootMasterAppShell />;
 }
-

@@ -142,7 +142,7 @@ export function CustomFieldForm({ defaultValues, fieldId }: CustomFieldFormProps
           size="icon"
           className="h-8 w-8 shrink-0"
           type="button"
-          onClick={() => useNavigationStore.getState().navigateTo("custom-fields")}
+          onClick={() => useNavigationStore.getState().goBack()}
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>

@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { History, ArrowLeft } from "lucide-react";
 import { useNavigationStore } from "@/lib/store/use-navigation-store";
 
+import RootMasterAppShell from "@/app/page";
+
 export function AboutView() {
   const changelogs = [
     {
@@ -67,7 +69,7 @@ export function AboutView() {
           variant="ghost"
           size="icon"
           className="h-8 w-8 shrink-0"
-          onClick={() => useNavigationStore.getState().navigateTo("settings")}
+          onClick={() => useNavigationStore.getState().goBack()}
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
@@ -140,4 +142,10 @@ export function AboutView() {
   );
 }
 
-export default AboutView;
+export default function AboutRoutePage() {
+  React.useEffect(() => {
+    useNavigationStore.setState({ activeView: "settings-about" });
+  }, []);
+
+  return <RootMasterAppShell />;
+}

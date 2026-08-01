@@ -18,11 +18,17 @@ interface NavigationState {
   activeView: ActiveView;
   activeStudentId: string | null;
   activeFieldId: string | null;
-  historyStack: Array<{ view: ActiveView; studentId?: string | null; fieldId?: string | null }>;
+  activeVaultGroupId: string | null;
+  historyStack: Array<{
+    view: ActiveView;
+    studentId?: string | null;
+    fieldId?: string | null;
+    vaultGroupId?: string | null;
+  }>;
 
   navigateTo: (
     view: ActiveView,
-    params?: { studentId?: string | null; fieldId?: string | null },
+    params?: { studentId?: string | null; fieldId?: string | null; vaultGroupId?: string | null },
   ) => void;
   goBack: () => void;
 }
@@ -31,6 +37,7 @@ export function resolveHrefToNavigation(href: string): {
   view: ActiveView;
   studentId?: string;
   fieldId?: string;
+  vaultGroupId?: string;
 } {
   if (href === "/students/new") return { view: "student-new" };
   if (href.startsWith("/students/") && href.endsWith("/edit")) {
@@ -65,20 +72,28 @@ export const useNavigationStore = create<NavigationState>((set, get) => ({
   activeView: "students",
   activeStudentId: null,
   activeFieldId: null,
+  activeVaultGroupId: null,
   historyStack: [],
 
   navigateTo: (view, params) => {
     const currentView = get().activeView;
     const currentStudentId = get().activeStudentId;
     const currentFieldId = get().activeFieldId;
+    const currentVaultGroupId = get().activeVaultGroupId;
 
     set((state) => ({
       activeView: view,
       activeStudentId: params?.studentId ?? null,
       activeFieldId: params?.fieldId ?? null,
+      activeVaultGroupId: params?.vaultGroupId ?? (view === "vault-manage" ? currentVaultGroupId : null),
       historyStack: [
         ...state.historyStack,
-        { view: currentView, studentId: currentStudentId, fieldId: currentFieldId },
+        {
+          view: currentView,
+          studentId: currentStudentId,
+          fieldId: currentFieldId,
+          vaultGroupId: currentVaultGroupId,
+        },
       ],
     }));
   },
@@ -86,7 +101,12 @@ export const useNavigationStore = create<NavigationState>((set, get) => ({
   goBack: () => {
     const stack = get().historyStack;
     if (stack.length === 0) {
-      set({ activeView: "students", activeStudentId: null, activeFieldId: null });
+      set({
+        activeView: "students",
+        activeStudentId: null,
+        activeFieldId: null,
+        activeVaultGroupId: null,
+      });
       return;
     }
 
@@ -97,8 +117,8 @@ export const useNavigationStore = create<NavigationState>((set, get) => ({
       activeView: previous.view,
       activeStudentId: previous.studentId ?? null,
       activeFieldId: previous.fieldId ?? null,
+      activeVaultGroupId: previous.vaultGroupId ?? null,
       historyStack: newStack,
     });
   },
 }));
-

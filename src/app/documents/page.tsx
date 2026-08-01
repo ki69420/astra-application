@@ -1,12 +1,12 @@
-import { prisma } from "@/lib/prisma";
-import { DocumentsList } from "./documents-list";
+"use client";
+import React from "react";
+import RootMasterAppShell from "../page";
+import { useNavigationStore } from "@/lib/store/use-navigation-store";
 
-export default async function DocumentsPage() {
-  const documents = await prisma.document.findMany({
-    where: { deleted_at: null },
-    orderBy: { uploaded_at: "desc" },
-    take: 100,
-  });
+export default function DocumentsRoutePage() {
+  React.useEffect(() => {
+    useNavigationStore.setState({ activeView: "documents" });
+  }, []);
 
-  return <DocumentsList initialDocuments={documents} />;
+  return <RootMasterAppShell />;
 }

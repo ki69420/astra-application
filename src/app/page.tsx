@@ -13,8 +13,8 @@ import { CustomFieldForm } from "./custom-fields/custom-field-form";
 import { VaultView } from "./vault/vault-view";
 import { VaultManageView } from "./vault/manage-view";
 import { DocumentsList } from "./documents/documents-list";
-import SettingsPage from "./settings/page";
-import AboutPage from "./settings/about/page";
+import { SettingsView } from "./settings/page";
+import { AboutView } from "./settings/about/page";
 
 export default function RootMasterAppShell() {
   const activeView = useNavigationStore((s) => s.activeView);
@@ -59,15 +59,14 @@ export default function RootMasterAppShell() {
       case "custom-field-new":
         return <CustomFieldForm />;
       case "vault":
-        return <VaultView />;
       case "vault-manage":
-        return <VaultManageView />;
+        return <VaultView />;
       case "documents":
         return <DocumentsList initialDocuments={[]} />;
       case "settings":
-        return <SettingsPage />;
+        return <SettingsView />;
       case "settings-about":
-        return <AboutPage />;
+        return <AboutView />;
       default:
         return <StudentsTable data={[]} totalEnrolledCount={0} homepageFields={[]} searchableFields={[]} />;
     }

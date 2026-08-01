@@ -1,21 +1,18 @@
 "use client";
 import React from "react";
 import { useParams } from "next/navigation";
-import { EditCustomFieldView } from "./edit-custom-field-view";
+import RootMasterAppShell from "@/app/page";
+import { useNavigationStore } from "@/lib/store/use-navigation-store";
 
-export default function EditCustomFieldPage() {
+export default function EditCustomFieldRoutePage() {
   const params = useParams();
   const id = (params?.id as string) || "";
 
-  const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => {
-    setMounted(true);
-  }, []);
+    if (id) {
+      useNavigationStore.setState({ activeView: "custom-field-edit", activeFieldId: id });
+    }
+  }, [id]);
 
-  if (!mounted) {
-    return <div className="min-h-screen bg-background" />;
-  }
-
-  return <EditCustomFieldView fieldId={id} />;
+  return <RootMasterAppShell />;
 }
-

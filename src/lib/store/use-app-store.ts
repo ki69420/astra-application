@@ -151,10 +151,12 @@ interface AppState {
   optimisticAddVaultGroup: (group: VaultGroupRow, parentIds?: string[]) => void;
   optimisticUpdateVaultGroup: (id: string, updated: Partial<VaultGroupRow>, parentIds?: string[]) => void;
   optimisticDeleteVaultGroup: (id: string, parentId?: string) => void;
+  optimisticUpdateVaultGroupLinkOrder: (parentId: string, childId: string, displayOrder: number) => void;
 
   optimisticAddVaultItem: (item: VaultItemRow, groupIds?: string[]) => void;
   optimisticUpdateVaultItem: (id: string, updated: Partial<VaultItemRow>, groupIds?: string[]) => void;
   optimisticDeleteVaultItem: (id: string, groupId?: string) => void;
+  optimisticUpdateVaultItemLinkOrder: (groupId: string, itemId: string, displayOrder: number) => void;
 
   checkAndSyncBackground: () => Promise<void>;
   fetchVaultBackground: () => Promise<void>;
@@ -408,6 +410,26 @@ export const useAppStore = create<AppState>()(
             vaultGroupItemLinks: state.vaultGroupItemLinks.filter((l) => l.item_id !== id),
           };
         });
+      },
+
+      optimisticUpdateVaultGroupLinkOrder: (parentId, childId, displayOrder) => {
+        set((state) => ({
+          vaultParentLinks: state.vaultParentLinks.map((l) =>
+            l.parent_id === parentId && l.child_id === childId
+              ? { ...l, display_order: displayOrder }
+              : l
+          ),
+        }));
+      },
+
+      optimisticUpdateVaultItemLinkOrder: (groupId, itemId, displayOrder) => {
+        set((state) => ({
+          vaultGroupItemLinks: state.vaultGroupItemLinks.map((l) =>
+            l.group_id === groupId && l.item_id === itemId
+              ? { ...l, display_order: displayOrder }
+              : l
+          ),
+        }));
       },
 
       fetchVaultBackground: async () => {

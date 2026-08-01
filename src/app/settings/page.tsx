@@ -8,6 +8,7 @@ import { useAppStore, type TextSize } from "@/lib/store/use-app-store";
 import { Check, ChevronRight, Info, Type, Phone, GraduationCap } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { useNavigationStore } from "@/lib/store/use-navigation-store";
+import RootMasterAppShell from "../page";
 
 const TEXT_SIZES: Array<{
   id: TextSize;
@@ -35,7 +36,7 @@ const TEXT_SIZES: Array<{
   },
 ];
 
-export default function SettingsPage() {
+export function SettingsView() {
   const textSize = useAppStore((s) => s.textSize);
   const setTextSize = useAppStore((s) => s.setTextSize);
 
@@ -52,7 +53,6 @@ export default function SettingsPage() {
   if (!mounted) {
     return <div className="min-h-screen bg-background" />;
   }
-
 
   return (
     <div className="flex flex-col">
@@ -159,4 +159,12 @@ export default function SettingsPage() {
       </div>
     </div>
   );
+}
+
+export default function SettingsRoutePage() {
+  React.useEffect(() => {
+    useNavigationStore.setState({ activeView: "settings" });
+  }, []);
+
+  return <RootMasterAppShell />;
 }

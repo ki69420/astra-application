@@ -70,39 +70,27 @@ function SortableCard({ field }: { field: Field }) {
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={isSelfDragging ? "opacity-0" : ""}
+      {...attributes}
+      {...listeners}
     >
-      <Card className={`overflow-hidden transition-colors ${isLoading ? "border-primary/50 bg-primary/5" : ""}`}>
-        <CardContent className="p-4 flex items-center gap-3">
-          <button
-            {...attributes}
-            {...listeners}
-            aria-label="Drag to reorder"
-            className="text-muted-foreground/30 hover:text-muted-foreground transition-colors cursor-grab active:cursor-grabbing touch-none focus-visible:outline-none shrink-0"
-          >
-            <GripVertical className="h-5 w-5" />
-          </button>
-          <Link
-            href={`/custom-fields/${field.id}`}
-            onClick={handleClick}
-            className="flex-1 min-w-0 flex items-center justify-between gap-3"
-          >
-            <div className="min-w-0">
-              <p className="font-medium text-sm truncate">{field.label}</p>
-              <div className="flex items-center gap-2 mt-1.5">
-                <Badge variant="outline" className="font-mono text-xs">
-                  {field.field_type}
-                </Badge>
-                {field.show_in_homepage && (
-                  <Badge variant="default" className="text-xs">Homepage</Badge>
-                )}
-              </div>
+      <Card className={`overflow-hidden transition-colors cursor-grab active:cursor-grabbing touch-none ${isLoading ? "border-primary/50 bg-primary/5" : ""}`}>
+        <CardContent className="p-4 flex items-center justify-between gap-3" onClick={handleClick}>
+          <div className="min-w-0">
+            <p className="font-medium text-sm truncate">{field.label}</p>
+            <div className="flex items-center gap-2 mt-1.5">
+              <Badge variant="outline" className="font-mono text-xs">
+                {field.field_type}
+              </Badge>
+              {field.show_in_homepage && (
+                <Badge variant="default" className="text-xs">Homepage</Badge>
+              )}
             </div>
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />
-            ) : (
-              <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-            )}
-          </Link>
+          </div>
+          {isLoading ? (
+            <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />
+          ) : (
+            <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+          )}
         </CardContent>
       </Card>
     </div>
@@ -209,10 +197,14 @@ export function CustomFieldsTable({ fields: initialFields = [] }: { fields?: Fie
           </div>
         ) : (
           <>
-            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-              <GripVertical className="h-3.5 w-3.5" />
-              Drag to reorder
-            </p>
+            <div className="space-y-0.5 pb-1">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Display Order
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                Drag cards to reorder profile fields
+              </p>
+            </div>
             <ClientOnly>
               <DndContext
                 sensors={sensors}

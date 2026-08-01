@@ -22,7 +22,6 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { toast } from "@/components/ui/use-toast";
 
 function SortableItem({ id, title, isGroup }: { id: string; title: string; isGroup: boolean }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
@@ -59,17 +58,58 @@ function SortableItem({ id, title, isGroup }: { id: string; title: string; isGro
 
 export function VaultManageView() {
   const vaultGroups = useAppStore((s) => s.vaultGroups) || [];
+  const vaultParentLinks = useAppStore((s) => s.vaultParentLinks) || [];
   const vaultItems = useAppStore((s) => s.vaultItems) || [];
+  const vaultGroupItemLinks = useAppStore((s) => s.vaultGroupItemLinks) || [];
   const optimisticUpdateVaultGroup = useAppStore((s) => s.optimisticUpdateVaultGroup);
   const optimisticUpdateVaultItem = useAppStore((s) => s.optimisticUpdateVaultItem);
 
-  const [localGroups, setLocalGroups] = React.useState<VaultGroupRow[]>(vaultGroups);
-  const [localItems, setLocalItems] = React.useState<VaultItemRow[]>(vaultItems);
+  const activeVaultGroupId = useNavigationStore((s) => s.activeVaultGroupId);
+
+  // Group Map
+  const groupMap = React.useMemo(() => {
+    return new Map(vaultGroups.map((g) => [g.id, g]));
+  }, [vaultGroups]);
+
+  // Current Folder Title
+  const activeFolderTitle = React.useMemo(() => {
+    if (!activeVaultGroupId) return "Vault Root";
+    return groupMap.get(activeVaultGroupId)?.title || "Vault Folder";
+  }, [activeVaultGroupId, groupMap]);
+
+  // Relevant Subgroups & Items for the active folder context
+  const [localGroups, setLocalGroups] = React.useState<VaultGroupRow[]>([]);
+  const [localItems, setLocalItems] = React.useState<VaultItemRow[]>([]);
 
   React.useEffect(() => {
-    setLocalGroups(vaultGroups);
-    setLocalItems(vaultItems);
-  }, [vaultGroups, vaultItems]);
+    let rawGroups: VaultGroupRow[] = [];
+    if (!activeVaultGroupId) {
+      const childGroupIds = new Set(vaultParentLinks.map((l) => l.child_id));
+      rawGroups = vaultGroups.filter((g) => !childGroupIds.has(g.id));
+    } else {
+      const childIds = vaultParentLinks
+        .filter((l) => l.parent_id === activeVaultGroupId)
+        .map((l) => l.child_id);
+      rawGroups = childIds.map((id) => groupMap.get(id)).filter(Boolean) as VaultGroupRow[];
+    }
+    const sortedGroups = [...rawGroups].sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
+
+    let rawItems: VaultItemRow[] = [];
+    if (!activeVaultGroupId) {
+      const linkedItemIds = new Set(vaultGroupItemLinks.map((l) => l.item_id));
+      rawItems = vaultItems.filter((i) => !linkedItemIds.has(i.id));
+    } else {
+      const itemIds = vaultGroupItemLinks
+        .filter((l) => l.group_id === activeVaultGroupId)
+        .map((l) => l.item_id);
+      const itemMap = new Map(vaultItems.map((i) => [i.id, i]));
+      rawItems = itemIds.map((id) => itemMap.get(id)).filter(Boolean) as VaultItemRow[];
+    }
+    const sortedItems = [...rawItems].sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
+
+    setLocalGroups(sortedGroups);
+    setLocalItems(sortedItems);
+  }, [activeVaultGroupId, vaultGroups, vaultParentLinks, vaultItems, vaultGroupItemLinks, groupMap]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -82,16 +122,20 @@ export function VaultManageView() {
       setLocalGroups((items) => {
         const oldIndex = items.findIndex((i) => i.id === active.id);
         const newIndex = items.findIndex((i) => i.id === over.id);
-        const reordered = arrayMove(items, oldIndex, newIndex);
-        reordered.forEach((g, idx) => {
-          optimisticUpdateVaultGroup(g.id, { display_order: idx });
+        const reordered = arrayMove(items, oldIndex, newIndex).map((g, idx) => ({
+          ...g,
+          display_order: idx,
+        }));
+
+        reordered.forEach((g) => {
+          optimisticUpdateVaultGroup(g.id, { display_order: g.display_order });
           fetch("/api/vault/groups", {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: g.id, display_order: idx }),
+            body: JSON.stringify({ id: g.id, display_order: g.display_order }),
           });
         });
-        toast({ title: "Folders reordered" });
+
         return reordered;
       });
     }
@@ -103,16 +147,20 @@ export function VaultManageView() {
       setLocalItems((items) => {
         const oldIndex = items.findIndex((i) => i.id === active.id);
         const newIndex = items.findIndex((i) => i.id === over.id);
-        const reordered = arrayMove(items, oldIndex, newIndex);
-        reordered.forEach((item, idx) => {
-          optimisticUpdateVaultItem(item.id, { display_order: idx });
+        const reordered = arrayMove(items, oldIndex, newIndex).map((item, idx) => ({
+          ...item,
+          display_order: idx,
+        }));
+
+        reordered.forEach((item) => {
+          optimisticUpdateVaultItem(item.id, { display_order: item.display_order });
           fetch("/api/vault/items", {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: item.id, display_order: idx }),
+            body: JSON.stringify({ id: item.id, display_order: item.display_order }),
           });
         });
-        toast({ title: "Vault items reordered" });
+
         return reordered;
       });
     }
@@ -126,39 +174,41 @@ export function VaultManageView() {
           size="icon"
           className="h-8 w-8 shrink-0"
           type="button"
-          onClick={() => useNavigationStore.getState().navigateTo("vault")}
+          onClick={() => useNavigationStore.getState().goBack()}
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h1 className="text-base font-bold">Organize &amp; Reorder Vault</h1>
-          <p className="text-xs text-muted-foreground">Drag folders or items to change their display order</p>
+          <h1 className="text-base font-bold">Organize &amp; Reorder</h1>
+          <p className="text-xs text-muted-foreground truncate">{activeFolderTitle} — drag items or sub-folders</p>
         </div>
       </header>
 
       <div className="px-4 py-4 space-y-6">
-        {/* Reorder Groups / Folders */}
-        <div className="space-y-3">
-          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            Reorder Folders ({localGroups.length})
-          </h2>
+        {/* Reorder Subfolders */}
+        {localGroups.length > 0 && (
+          <div className="space-y-3">
+            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Sub-Folders ({localGroups.length})
+            </h2>
 
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleGroupDragEnd}>
-            <SortableContext items={localGroups.map((g) => g.id)} strategy={verticalListSortingStrategy}>
-              <div className="space-y-2">
-                {localGroups.map((group) => (
-                  <SortableItem key={group.id} id={group.id} title={group.title} isGroup={true} />
-                ))}
-              </div>
-            </SortableContext>
-          </DndContext>
-        </div>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleGroupDragEnd}>
+              <SortableContext items={localGroups.map((g) => g.id)} strategy={verticalListSortingStrategy}>
+                <div className="space-y-2">
+                  {localGroups.map((group) => (
+                    <SortableItem key={group.id} id={group.id} title={group.title} isGroup={true} />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+          </div>
+        )}
 
         {/* Reorder Items */}
         {localItems.length > 0 && (
           <div className="space-y-3 border-t pt-4">
             <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Reorder Vault Items ({localItems.length})
+              Items ({localItems.length})
             </h2>
 
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleItemDragEnd}>
@@ -170,6 +220,12 @@ export function VaultManageView() {
                 </div>
               </SortableContext>
             </DndContext>
+          </div>
+        )}
+
+        {localGroups.length === 0 && localItems.length === 0 && (
+          <div className="text-center py-16 text-muted-foreground text-sm">
+            No items or sub-folders to reorder in this location.
           </div>
         )}
       </div>
