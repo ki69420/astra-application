@@ -109,6 +109,7 @@ interface AppState {
   vaultParentLinks: VaultGroupParentChildRow[];
   vaultItems: VaultItemRow[];
   vaultGroupItemLinks: VaultGroupItemRow[];
+  lastVaultModifiedAt: number;
 
   lastSyncedAt: string | null;
   isInitialized: boolean;
@@ -180,6 +181,7 @@ export const useAppStore = create<AppState>()(
       vaultParentLinks: [],
       vaultItems: [],
       vaultGroupItemLinks: [],
+      lastVaultModifiedAt: 0,
 
       lastSyncedAt: null,
       isInitialized: false,
@@ -344,7 +346,7 @@ export const useAppStore = create<AppState>()(
               ...parentIds.map((pId, idx) => ({ parent_id: pId, child_id: id, display_order: idx })),
             );
           }
-          return { vaultGroups: newGroups, vaultParentLinks: newParentLinks };
+          return { vaultGroups: newGroups, vaultParentLinks: newParentLinks, lastVaultModifiedAt: Date.now() };
         });
       },
 
@@ -356,6 +358,7 @@ export const useAppStore = create<AppState>()(
               vaultParentLinks: state.vaultParentLinks.filter(
                 (l) => !(l.parent_id === parentId && l.child_id === id),
               ),
+              lastVaultModifiedAt: Date.now(),
             };
           }
           // Delete group permanently
@@ -365,6 +368,7 @@ export const useAppStore = create<AppState>()(
               (l) => l.parent_id !== id && l.child_id !== id,
             ),
             vaultGroupItemLinks: state.vaultGroupItemLinks.filter((l) => l.group_id !== id),
+            lastVaultModifiedAt: Date.now(),
           };
         });
       },
@@ -376,7 +380,7 @@ export const useAppStore = create<AppState>()(
             ...state.vaultGroupItemLinks,
             ...groupIds.map((gId, idx) => ({ group_id: gId, item_id: item.id, display_order: idx })),
           ];
-          return { vaultItems: newItems, vaultGroupItemLinks: newItemLinks };
+          return { vaultItems: newItems, vaultGroupItemLinks: newItemLinks, lastVaultModifiedAt: Date.now() };
         });
       },
 
@@ -390,7 +394,7 @@ export const useAppStore = create<AppState>()(
               ...groupIds.map((gId, idx) => ({ group_id: gId, item_id: id, display_order: idx })),
             );
           }
-          return { vaultItems: newItems, vaultGroupItemLinks: newItemLinks };
+          return { vaultItems: newItems, vaultGroupItemLinks: newItemLinks, lastVaultModifiedAt: Date.now() };
         });
       },
 
@@ -419,6 +423,7 @@ export const useAppStore = create<AppState>()(
               ? { ...l, display_order: displayOrder }
               : l
           ),
+          lastVaultModifiedAt: Date.now(),
         }));
       },
 
@@ -429,16 +434,22 @@ export const useAppStore = create<AppState>()(
               ? { ...l, display_order: displayOrder }
               : l
           ),
+          lastVaultModifiedAt: Date.now(),
         }));
       },
 
       fetchVaultBackground: async () => {
         if (typeof navigator !== "undefined" && !navigator.onLine) return;
+        const fetchStartedAt = Date.now();
         try {
           const res = await fetch("/api/vault/full", { cache: "no-store" });
           if (!res.ok) return;
           const data = await res.json();
           if (!data || data.error || !Array.isArray(data.groups)) return;
+
+          // Guard against race conditions: if user edited vault after this fetch started, skip stale response!
+          if (get().lastVaultModifiedAt > fetchStartedAt) return;
+
           get().hydrateVault({
             groups: data.groups,
             parentLinks: data.parentLinks || [],

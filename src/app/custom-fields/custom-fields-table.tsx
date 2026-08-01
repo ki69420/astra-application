@@ -11,6 +11,7 @@ import {
   useSensors,
   DragEndEvent,
   DragStartEvent,
+  DragOverEvent,
   DragOverlay,
 } from "@dnd-kit/core";
 import {
@@ -27,14 +28,9 @@ import { toast } from "@/components/ui/use-toast";
 import { useRouter } from "next/navigation";
 import { useNavigationStore } from "@/lib/store/use-navigation-store";
 import { NavButton } from "@/components/ui/nav-button";
+import { Button } from "@/components/ui/button";
 
-type Field = {
-  id: string;
-  label: string;
-  field_type: string;
-  show_in_homepage: boolean;
-  display_order: number;
-};
+import { useAppStore, type CustomField } from "@/lib/store/use-app-store";
 
 function ClientOnly({ children }: { children: React.ReactNode }) {
   const mounted = useSyncExternalStore(
@@ -46,10 +42,10 @@ function ClientOnly({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-function SortableCard({ field }: { field: Field }) {
-  const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
-  const [, startTransition] = useTransition();
+function SortableCard({ field, isReorderMode, onTriggerReorder }: { field: CustomField; isReorderMode: boolean; onTriggerReorder: () => void }) {
+  const [isPressed, setIsPressed] = useState(false);
+  const holdTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+  const startPosRef = React.useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   const {
     attributes,
@@ -62,33 +58,83 @@ function SortableCard({ field }: { field: Field }) {
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    useNavigationStore.getState().navigateTo("custom-field-edit", { fieldId: field.id });
+    if (!isReorderMode && !isPressed) {
+      useNavigationStore.getState().navigateTo("custom-field-edit", { fieldId: field.id });
+    }
+  };
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    startPosRef.current = { x: e.clientX, y: e.clientY };
+
+    if (!isReorderMode) {
+      if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = setTimeout(() => {
+        setIsPressed(true);
+        if (typeof navigator !== "undefined" && navigator.vibrate) {
+          try { navigator.vibrate([40, 30, 40]); } catch {}
+        }
+        onTriggerReorder();
+      }, 350);
+    }
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!holdTimerRef.current || isPressed) return;
+    const dx = Math.abs(e.clientX - startPosRef.current.x);
+    const dy = Math.abs(e.clientY - startPosRef.current.y);
+    if (dx > 8 || dy > 8) {
+      clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = null;
+    }
+  };
+
+  const handlePointerUp = () => {
+    if (holdTimerRef.current) {
+      clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = null;
+    }
+    setIsPressed(false);
   };
 
   return (
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={isSelfDragging ? "opacity-0" : ""}
-      {...attributes}
-      {...listeners}
+      className={`transition-all duration-200 ${
+        isReorderMode ? "animate-jiggle" : ""
+      } ${isSelfDragging ? "opacity-30" : ""}`}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
     >
-      <Card className={`overflow-hidden transition-colors cursor-grab active:cursor-grabbing touch-none ${isLoading ? "border-primary/50 bg-primary/5" : ""}`}>
+      <Card className={`overflow-hidden transition-all duration-200 ${
+        isReorderMode ? "border-primary/40 bg-primary/5 shadow-md ring-1 ring-primary/30" : "hover:border-primary/50"
+      }`}>
         <CardContent className="p-4 flex items-center justify-between gap-3" onClick={handleClick}>
-          <div className="min-w-0">
-            <p className="font-medium text-sm truncate">{field.label}</p>
-            <div className="flex items-center gap-2 mt-1.5">
-              <Badge variant="outline" className="font-mono text-xs">
-                {field.field_type}
-              </Badge>
-              {field.show_in_homepage && (
-                <Badge variant="default" className="text-xs">Homepage</Badge>
-              )}
+          <div className="flex items-center gap-3 min-w-0">
+            {isReorderMode && (
+              <div
+                className="text-primary shrink-0 cursor-grab active:cursor-grabbing p-1 -ml-1 rounded hover:bg-primary/10 touch-none"
+                {...attributes}
+                {...listeners}
+              >
+                <GripVertical className="h-5 w-5" />
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className="font-medium text-sm truncate">{field.label}</p>
+              <div className="flex items-center gap-2 mt-1.5">
+                <Badge variant="outline" className="font-mono text-xs">
+                  {field.field_type}
+                </Badge>
+                {field.show_in_homepage && (
+                  <Badge variant="default" className="text-xs">Homepage</Badge>
+                )}
+              </div>
             </div>
           </div>
-          {isLoading ? (
-            <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />
-          ) : (
+          {!isReorderMode && (
             <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
           )}
         </CardContent>
@@ -97,11 +143,11 @@ function SortableCard({ field }: { field: Field }) {
   );
 }
 
-function OverlayCard({ field }: { field: Field }) {
+function OverlayCard({ field }: { field: CustomField }) {
   return (
-    <Card className="overflow-hidden shadow-2xl">
+    <Card className="overflow-hidden shadow-2xl border-primary ring-2 ring-primary">
       <CardContent className="p-4 flex items-center gap-3">
-        <div className="text-muted-foreground shrink-0">
+        <div className="text-primary shrink-0">
           <GripVertical className="h-5 w-5" />
         </div>
         <div className="flex-1 min-w-0">
@@ -120,21 +166,18 @@ function OverlayCard({ field }: { field: Field }) {
   );
 }
 
-import { useAppStore } from "@/lib/store/use-app-store";
-
-export function CustomFieldsTable({ fields: initialFields = [] }: { fields?: Field[] }) {
-  const router = useRouter();
-  const [, startTransition] = useTransition();
+export function CustomFieldsTable({ fields: initialFields = [] }: { fields?: CustomField[] }) {
   const storeCustomFields = useAppStore((s) => s.customFields);
   const optimisticReorderCustomFields = useAppStore((s) => s.optimisticReorderCustomFields);
   const isInitialized = useAppStore((s) => s.isInitialized);
 
   const displayFields = (isInitialized && storeCustomFields.length > 0)
-    ? (storeCustomFields as Field[])
+    ? storeCustomFields
     : initialFields;
 
   const [fields, setFields] = useState(displayFields);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [isReorderMode, setIsReorderMode] = useState(false);
 
   React.useEffect(() => {
     if (displayFields.length > 0) {
@@ -142,28 +185,53 @@ export function CustomFieldsTable({ fields: initialFields = [] }: { fields?: Fie
     }
   }, [displayFields]);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
+  const normalSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
   );
+
+  const reorderSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 1 } }),
+    useSensor(TouchSensor, { activationConstraint: { distance: 1 } }),
+  );
+
+  const sensors = isReorderMode ? reorderSensors : normalSensors;
 
   const activeField = activeId ? fields.find((f) => f.id === activeId) : null;
 
   function handleDragStart(event: DragStartEvent) {
     setActiveId(event.active.id as string);
+    if (typeof document !== "undefined") {
+      document.body.style.overflow = "hidden";
+      document.body.style.touchAction = "none";
+    }
+  }
+
+  const unlockScroll = () => {
+    if (typeof document !== "undefined") {
+      document.body.style.overflow = "";
+      document.body.style.touchAction = "";
+    }
+  };
+
+  function handleDragOver(event: DragOverEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = fields.findIndex((f) => f.id === active.id);
+    const newIndex = fields.findIndex((f) => f.id === over.id);
+    if (oldIndex !== -1 && newIndex !== -1) {
+      setFields((prev) => arrayMove(prev, oldIndex, newIndex));
+    }
   }
 
   async function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     setActiveId(null);
-    if (!over || active.id === over.id) return;
+    unlockScroll();
 
-    const oldIndex = fields.findIndex((f) => f.id === active.id);
-    const newIndex = fields.findIndex((f) => f.id === over.id);
-    const updated = arrayMove(fields, oldIndex, newIndex);
-    setFields(updated);
+    optimisticReorderCustomFields(fields);
 
-    const order = updated.map((f, i) => ({ id: f.id, display_order: i + 1 }));
+    const order = fields.map((f, i) => ({ id: f.id, display_order: i + 1 }));
     const res = await fetch("/api/custom-fields/reorder", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -172,10 +240,22 @@ export function CustomFieldsTable({ fields: initialFields = [] }: { fields?: Fie
 
     if (!res.ok) {
       toast({ variant: "destructive", title: "Failed to save order" });
-    } else {
-      startTransition(() => router.refresh());
     }
   }
+
+  function handleDragCancel() {
+    setActiveId(null);
+    unlockScroll();
+    if (displayFields.length > 0) setFields(displayFields);
+  }
+
+  const toggleReorderMode = () => {
+    const nextState = !isReorderMode;
+    setIsReorderMode(nextState);
+    if (nextState && typeof navigator !== "undefined" && navigator.vibrate) {
+      try { navigator.vibrate([40, 30, 40]); } catch {}
+    }
+  };
 
   return (
     <div>
@@ -184,10 +264,23 @@ export function CustomFieldsTable({ fields: initialFields = [] }: { fields?: Fie
           <h1 className="text-lg font-bold leading-tight">Student Profile Fields</h1>
           <p className="text-xs text-muted-foreground">{fields.length} profile fields setup</p>
         </div>
-        <NavButton href="/custom-fields/new">
-          <Plus className="h-4 w-4 mr-1" />
-          Add
-        </NavButton>
+        <div className="flex items-center gap-2">
+          {isReorderMode ? (
+            <Button size="sm" variant="default" className="bg-primary text-primary-foreground font-semibold px-4" onClick={toggleReorderMode}>
+              Done ✓
+            </Button>
+          ) : (
+            <>
+              <Button size="sm" variant="outline" className="text-xs" onClick={toggleReorderMode}>
+                Reorder
+              </Button>
+              <NavButton href="/custom-fields/new">
+                <Plus className="h-4 w-4 mr-1" />
+                Add
+              </NavButton>
+            </>
+          )}
+        </div>
       </header>
 
       <div className="px-4 py-4 space-y-3">
@@ -197,25 +290,34 @@ export function CustomFieldsTable({ fields: initialFields = [] }: { fields?: Fie
           </div>
         ) : (
           <>
-            <div className="space-y-0.5 pb-1">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Display Order
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                Drag cards to reorder profile fields
-              </p>
+            <div className="flex items-center justify-between pb-1">
+              <div>
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Display Order
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  {isReorderMode ? "Reorder Mode Active — Drag cards to rearrange" : "Hold any card or tap Reorder to rearrange"}
+                </p>
+              </div>
             </div>
             <ClientOnly>
               <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
                 onDragStart={handleDragStart}
+                onDragOver={handleDragOver}
                 onDragEnd={handleDragEnd}
+                onDragCancel={handleDragCancel}
               >
                 <SortableContext items={fields.map((f) => f.id)} strategy={verticalListSortingStrategy}>
                   <div className="space-y-2">
                     {fields.map((f) => (
-                      <SortableCard key={f.id} field={f} />
+                      <SortableCard
+                        key={f.id}
+                        field={f}
+                        isReorderMode={isReorderMode}
+                        onTriggerReorder={() => setIsReorderMode(true)}
+                      />
                     ))}
                   </div>
                 </SortableContext>

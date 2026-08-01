@@ -96,3 +96,12 @@
     font-size: 1rem; /* scales dynamically with root rem */
   }
 }
+
+@keyframes subtle-jiggle {
+  0%, 100% { transform: rotate(-0.4deg) translateY(0); }
+  50% { transform: rotate(0.4deg) translateY(-0.5px); }
+}
+
+.animate-jiggle {
+  animation: subtle-jiggle 0.22s ease-in-out infinite;
+}

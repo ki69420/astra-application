@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { title, value_text, value_date, document_id, custom_field_id, group_ids } = body;
+    const { title, value_text, value_date, document_id, group_ids } = body;
 
     if (!title || typeof title !== "string" || !title.trim()) {
       return NextResponse.json({ error: "Title is required" }, { status: 400 });
@@ -18,11 +18,9 @@ export async function POST(req: NextRequest) {
         value_text: value_text ? String(value_text).trim() : null,
         value_date: value_date ? new Date(value_date) : null,
         document_id: document_id ? String(document_id).trim() : null,
-        custom_field_id: custom_field_id ? String(custom_field_id).trim() : null,
       },
       include: {
         document: true,
-        custom_field: true,
       },
     });
 
@@ -49,7 +47,7 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, title, value_text, value_date, document_id, custom_field_id, group_ids, group_id, display_order } = body;
+    const { id, title, value_text, value_date, document_id, group_ids, group_id, display_order } = body;
 
     if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });
 
@@ -65,14 +63,13 @@ export async function PATCH(req: NextRequest) {
     if (value_text !== undefined) updateData.value_text = value_text ? String(value_text).trim() : null;
     if (value_date !== undefined) updateData.value_date = value_date ? new Date(value_date) : null;
     if (document_id !== undefined) updateData.document_id = document_id ? String(document_id).trim() : null;
-    if (custom_field_id !== undefined) updateData.custom_field_id = custom_field_id ? String(custom_field_id).trim() : null;
+    if (display_order !== undefined && !group_id) updateData.display_order = Number(display_order);
 
     const item = await prisma.vaultItem.update({
       where: { id },
       data: updateData,
       include: {
         document: true,
-        custom_field: true,
       },
     });
 

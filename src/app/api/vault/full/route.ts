@@ -14,10 +14,9 @@ export async function GET() {
         orderBy: { display_order: "asc" },
       }),
       prisma.vaultItem.findMany({
-        orderBy: { created_at: "desc" },
+        orderBy: [{ display_order: "asc" }, { created_at: "desc" }],
         include: {
           document: true,
-          custom_field: true,
         },
       }),
       prisma.vaultGroupItem.findMany({

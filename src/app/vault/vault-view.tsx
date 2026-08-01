@@ -18,6 +18,7 @@ import {
   Bookmark,
   Award,
   Copy,
+  GripVertical,
 } from "lucide-react";
 import { useNavigationStore } from "@/lib/store/use-navigation-store";
 import { Button } from "@/components/ui/button";
@@ -45,9 +46,13 @@ import {
   DndContext,
   closestCenter,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragStartEvent,
+  type DragOverEvent,
+  DragOverlay,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -67,41 +72,175 @@ const ICON_MAP: Record<string, React.ElementType> = {
   Award,
 };
 
-function SortableFolder({ id, children }: { id: string; children: React.ReactNode }) {
+function SortableFolder({
+  id,
+  children,
+  isReorderMode,
+  onTriggerReorder,
+}: {
+  id: string;
+  children: (props: { dragHandleProps?: Record<string, unknown> }) => React.ReactNode;
+  isReorderMode: boolean;
+  onTriggerReorder: () => void;
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const holdTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+  const startPosRef = React.useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    startPosRef.current = { x: e.clientX, y: e.clientY };
+
+    if (!isReorderMode) {
+      if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = setTimeout(() => {
+        if (typeof navigator !== "undefined" && navigator.vibrate) {
+          try { navigator.vibrate([40, 30, 40]); } catch {}
+        }
+        onTriggerReorder();
+      }, 350);
+    }
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!holdTimerRef.current) return;
+    const dx = Math.abs(e.clientX - startPosRef.current.x);
+    const dy = Math.abs(e.clientY - startPosRef.current.y);
+    if (dx > 8 || dy > 8) {
+      clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = null;
+    }
+  };
+
+  const handlePointerUp = () => {
+    if (holdTimerRef.current) {
+      clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = null;
+    }
+  };
+
   return (
     <div
       ref={setNodeRef}
       style={{
         transform: CSS.Transform.toString(transform),
         transition,
-        opacity: isDragging ? 0.4 : 1,
+        opacity: isDragging ? 0.3 : 1,
       }}
-      {...attributes}
-      {...listeners}
-      className="touch-none cursor-grab active:cursor-grabbing"
+      className={`transition-all duration-200 ${
+        isReorderMode ? "animate-jiggle" : ""
+      }`}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
     >
-      {children}
+      {children({ dragHandleProps: isReorderMode ? { ...attributes, ...listeners } : undefined })}
     </div>
   );
 }
 
-function SortableVaultItem({ id, children }: { id: string; children: React.ReactNode }) {
+function SortableVaultItem({
+  id,
+  children,
+  isReorderMode,
+  onTriggerReorder,
+}: {
+  id: string;
+  children: (props: { dragHandleProps?: Record<string, unknown> }) => React.ReactNode;
+  isReorderMode: boolean;
+  onTriggerReorder: () => void;
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const holdTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+  const startPosRef = React.useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    startPosRef.current = { x: e.clientX, y: e.clientY };
+
+    if (!isReorderMode) {
+      if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = setTimeout(() => {
+        if (typeof navigator !== "undefined" && navigator.vibrate) {
+          try { navigator.vibrate([40, 30, 40]); } catch {}
+        }
+        onTriggerReorder();
+      }, 350);
+    }
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!holdTimerRef.current) return;
+    const dx = Math.abs(e.clientX - startPosRef.current.x);
+    const dy = Math.abs(e.clientY - startPosRef.current.y);
+    if (dx > 8 || dy > 8) {
+      clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = null;
+    }
+  };
+
+  const handlePointerUp = () => {
+    if (holdTimerRef.current) {
+      clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = null;
+    }
+  };
+
   return (
     <div
       ref={setNodeRef}
       style={{
         transform: CSS.Transform.toString(transform),
         transition,
-        opacity: isDragging ? 0.4 : 1,
+        opacity: isDragging ? 0.3 : 1,
       }}
-      {...attributes}
-      {...listeners}
-      className="touch-none cursor-grab active:cursor-grabbing"
+      className={`transition-all duration-200 ${
+        isReorderMode ? "animate-jiggle" : ""
+      }`}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
     >
-      {children}
+      {children({ dragHandleProps: isReorderMode ? { ...attributes, ...listeners } : undefined })}
     </div>
+  );
+}
+
+function OverlayFolder({ group }: { group: VaultGroupRow }) {
+  const IconComp = ICON_MAP[group.icon || "Folder"] || Folder;
+  return (
+    <Card className="overflow-hidden shadow-2xl border-primary ring-2 ring-primary scale-[1.02] bg-background/95 backdrop-blur z-50">
+      <CardContent className="p-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="text-primary shrink-0">
+            <GripVertical className="h-4 w-4" />
+          </div>
+          <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+            <IconComp className="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium truncate">{group.title}</p>
+            <p className="text-[10px] text-muted-foreground truncate">{group.description || "Folder"}</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function OverlayVaultItem({ item }: { item: VaultItemRow }) {
+  return (
+    <Card className="overflow-hidden shadow-2xl border-primary ring-2 ring-primary scale-[1.02] bg-background/95 backdrop-blur z-50">
+      <CardContent className="p-3.5 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="text-primary shrink-0">
+            <GripVertical className="h-4 w-4" />
+          </div>
+          <FileText className="h-4 w-4 text-primary shrink-0" />
+          <span className="text-sm font-semibold truncate">{item.title}</span>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -142,13 +281,23 @@ export function VaultView() {
     hasMultipleParents: boolean;
   } | null>(null);
 
+  const [isReorderMode, setIsReorderMode] = React.useState(false);
+
   React.useEffect(() => {
     fetchVaultBackground();
   }, [fetchVaultBackground]);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  const normalSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
   );
+
+  const reorderSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 1 } }),
+    useSensor(TouchSensor, { activationConstraint: { distance: 1 } }),
+  );
+
+  const sensors = isReorderMode ? reorderSensors : normalSensors;
 
   // Construct Parent Group Map
   const groupMap = React.useMemo(() => {
@@ -212,24 +361,77 @@ export function VaultView() {
     }
   }, [currentGroupId, vaultItems, vaultGroupItemLinks, searchQuery]);
 
-  const handleFolderDragEnd = (event: DragEndEvent) => {
+  const [activeFolderId, setActiveFolderId] = React.useState<string | null>(null);
+  const [activeItemId, setActiveItemId] = React.useState<string | null>(null);
+
+  const handleFolderDragStart = (event: DragStartEvent) => {
+    setActiveFolderId(event.active.id as string);
+    if (typeof document !== "undefined") {
+      document.body.style.overflow = "hidden";
+      document.body.style.touchAction = "none";
+    }
+  };
+
+  const handleItemDragStart = (event: DragStartEvent) => {
+    setActiveItemId(event.active.id as string);
+    if (typeof document !== "undefined") {
+      document.body.style.overflow = "hidden";
+      document.body.style.touchAction = "none";
+    }
+  };
+
+  const unlockScroll = () => {
+    if (typeof document !== "undefined") {
+      document.body.style.overflow = "";
+      document.body.style.touchAction = "";
+    }
+  };
+
+  const handleFolderDragOver = (event: DragOverEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
     const oldIndex = currentSubgroups.findIndex((g) => g.id === active.id);
     const newIndex = currentSubgroups.findIndex((g) => g.id === over.id);
-    if (oldIndex === -1 || newIndex === -1) return;
+    if (oldIndex !== -1 && newIndex !== -1) {
+      const reordered = arrayMove(currentSubgroups, oldIndex, newIndex);
+      reordered.forEach((g, idx) => {
+        if (currentGroupId) {
+          optimisticUpdateVaultGroupLinkOrder(currentGroupId, g.id, idx);
+        } else {
+          optimisticUpdateVaultGroup(g.id, { display_order: idx });
+        }
+      });
+    }
+  };
 
-    const reordered = arrayMove(currentSubgroups, oldIndex, newIndex);
-    reordered.forEach((g, idx) => {
+  const handleItemDragOver = (event: DragOverEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = currentItems.findIndex((i) => i.id === active.id);
+    const newIndex = currentItems.findIndex((i) => i.id === over.id);
+    if (oldIndex !== -1 && newIndex !== -1) {
+      const reordered = arrayMove(currentItems, oldIndex, newIndex);
+      reordered.forEach((item, idx) => {
+        if (currentGroupId) {
+          optimisticUpdateVaultItemLinkOrder(currentGroupId, item.id, idx);
+        } else {
+          optimisticUpdateVaultItem(item.id, { display_order: idx });
+        }
+      });
+    }
+  };
+
+  const handleFolderDragEnd = (event: DragEndEvent) => {
+    setActiveFolderId(null);
+    unlockScroll();
+    currentSubgroups.forEach((g, idx) => {
       if (currentGroupId) {
-        optimisticUpdateVaultGroupLinkOrder(currentGroupId, g.id, idx);
         fetch("/api/vault/groups", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id: g.id, parent_id: currentGroupId, display_order: idx }),
         });
       } else {
-        optimisticUpdateVaultGroup(g.id, { display_order: idx });
         fetch("/api/vault/groups", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -240,23 +442,16 @@ export function VaultView() {
   };
 
   const handleItemDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    const oldIndex = currentItems.findIndex((i) => i.id === active.id);
-    const newIndex = currentItems.findIndex((i) => i.id === over.id);
-    if (oldIndex === -1 || newIndex === -1) return;
-
-    const reordered = arrayMove(currentItems, oldIndex, newIndex);
-    reordered.forEach((item, idx) => {
+    setActiveItemId(null);
+    unlockScroll();
+    currentItems.forEach((item, idx) => {
       if (currentGroupId) {
-        optimisticUpdateVaultItemLinkOrder(currentGroupId, item.id, idx);
         fetch("/api/vault/items", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id: item.id, group_id: currentGroupId, display_order: idx }),
         });
       } else {
-        optimisticUpdateVaultItem(item.id, { display_order: idx });
         fetch("/api/vault/items", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -265,6 +460,15 @@ export function VaultView() {
       }
     });
   };
+
+  const handleDragCancel = () => {
+    setActiveFolderId(null);
+    setActiveItemId(null);
+    unlockScroll();
+  };
+
+  const activeFolder = activeFolderId ? currentSubgroups.find((g) => g.id === activeFolderId) : null;
+  const activeItem = activeItemId ? currentItems.find((i) => i.id === activeItemId) : null;
 
   const getParentNamesForGroup = (groupId: string) => {
     const parentIds = (vaultParentLinks || []).filter((l) => l.child_id === groupId).map((l) => l.parent_id);
@@ -309,29 +513,40 @@ export function VaultView() {
             <h1 className="text-lg font-bold leading-tight truncate">Vault</h1>
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setEditingGroup(null);
-                setIsGroupModalOpen(true);
-              }}
-              className="h-8 gap-1 text-xs"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Folder
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => {
-                setEditingItem(null);
-                setIsItemModalOpen(true);
-              }}
-              className="h-8 gap-1 text-xs"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Item
-            </Button>
+            {isReorderMode ? (
+              <Button size="sm" variant="default" className="h-8 bg-primary text-primary-foreground font-semibold px-4 text-xs" onClick={() => setIsReorderMode(false)}>
+                Done ✓
+              </Button>
+            ) : (
+              <>
+                <Button variant="outline" size="sm" onClick={() => setIsReorderMode(true)} className="h-8 text-xs">
+                  Reorder
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setEditingGroup(null);
+                    setIsGroupModalOpen(true);
+                  }}
+                  className="h-8 gap-1 text-xs"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Folder
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setEditingItem(null);
+                    setIsItemModalOpen(true);
+                  }}
+                  className="h-8 gap-1 text-xs"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Item
+                </Button>
+              </>
+            )}
           </div>
         </div>
 
@@ -349,34 +564,41 @@ export function VaultView() {
 
       {/* Breadcrumb Navigation Bar */}
       {!searchQuery && (
-        <div className="bg-muted/40 border-b px-4 py-2 flex items-center gap-1 text-xs overflow-x-auto no-scrollbar">
-          <button
-            onClick={() => {
-              setCurrentGroupId(null);
-              useNavigationStore.getState().navigateTo("vault", { vaultGroupId: null });
-            }}
-            className={`font-semibold hover:text-primary transition-colors flex items-center gap-1 shrink-0 ${
-              !currentGroupId ? "text-primary font-bold" : "text-muted-foreground"
-            }`}
-          >
-            Vault
-          </button>
-          {breadcrumbs.map((b, idx) => (
-            <React.Fragment key={b.id}>
-              <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
-              <button
-                onClick={() => {
-                  setCurrentGroupId(b.id);
-                  useNavigationStore.getState().navigateTo("vault", { vaultGroupId: b.id });
-                }}
-                className={`truncate max-w-[120px] transition-colors ${
-                  idx === breadcrumbs.length - 1 ? "text-foreground font-bold" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {b.title}
-              </button>
-            </React.Fragment>
-          ))}
+        <div className="bg-muted/40 border-b px-4 py-2 flex items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+            <button
+              onClick={() => {
+                setCurrentGroupId(null);
+                useNavigationStore.getState().navigateTo("vault", { vaultGroupId: null });
+              }}
+              className={`font-semibold hover:text-primary transition-colors flex items-center gap-1 shrink-0 ${
+                !currentGroupId ? "text-primary font-bold" : "text-muted-foreground"
+              }`}
+            >
+              Vault
+            </button>
+            {breadcrumbs.map((b, idx) => (
+              <React.Fragment key={b.id}>
+                <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
+                <button
+                  onClick={() => {
+                    setCurrentGroupId(b.id);
+                    useNavigationStore.getState().navigateTo("vault", { vaultGroupId: b.id });
+                  }}
+                  className={`truncate max-w-[120px] transition-colors ${
+                    idx === breadcrumbs.length - 1 ? "text-foreground font-bold" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {b.title}
+                </button>
+              </React.Fragment>
+            ))}
+          </div>
+          {isReorderMode && (
+            <span className="text-[11px] font-medium text-primary animate-pulse shrink-0">
+              Reorder Mode Active
+            </span>
+          )}
         </div>
       )}
 
@@ -442,7 +664,14 @@ export function VaultView() {
             <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Folders ({currentSubgroups.length})
             </h2>
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleFolderDragEnd}>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleFolderDragStart}
+              onDragOver={handleFolderDragOver}
+              onDragEnd={handleFolderDragEnd}
+              onDragCancel={handleDragCancel}
+            >
               <SortableContext items={currentSubgroups.map((g) => g.id)} strategy={verticalListSortingStrategy}>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {currentSubgroups.map((grp) => {
@@ -450,80 +679,104 @@ export function VaultView() {
                     const parentNames = getParentNamesForGroup(grp.id);
 
                     return (
-                      <SortableFolder key={grp.id} id={grp.id}>
-                        <Card
-                          className="hover:border-primary/50 transition-colors cursor-grab active:cursor-grabbing group"
-                          onClick={() => {
-                            setCurrentGroupId(grp.id);
-                            useNavigationStore.getState().navigateTo("vault", { vaultGroupId: grp.id });
-                          }}
-                        >
-                          <CardContent className="p-3 flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                                <IconComp className="h-4 w-4" />
-                              </div>
-                              <div className="min-w-0">
-                                <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">
-                                  {grp.title}
-                                </p>
-                                {parentNames.length > 1 ? (
-                                  <p className="text-[10px] text-muted-foreground flex items-center gap-1">
-                                    <Layers className="h-3 w-3 text-primary" />
-                                    Appears in {parentNames.length} folders
-                                  </p>
-                                ) : (
-                                  <p className="text-[10px] text-muted-foreground truncate">
-                                    {grp.description || "Folder"}
-                                  </p>
+                      <SortableFolder
+                        key={grp.id}
+                        id={grp.id}
+                        isReorderMode={isReorderMode}
+                        onTriggerReorder={() => setIsReorderMode(true)}
+                      >
+                        {({ dragHandleProps }: { dragHandleProps?: Record<string, unknown> } = {}) => (
+                          <Card
+                            className={`transition-all duration-200 group ${
+                              isReorderMode ? "border-primary/40 bg-primary/5 shadow-md" : "hover:border-primary/50"
+                            }`}
+                            onClick={() => {
+                              if (!isReorderMode) {
+                                setCurrentGroupId(grp.id);
+                                useNavigationStore.getState().navigateTo("vault", { vaultGroupId: grp.id });
+                              }
+                            }}
+                          >
+                            <CardContent className="p-3 flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-3 min-w-0">
+                                {isReorderMode && (
+                                  <div
+                                    className="text-primary shrink-0 cursor-grab active:cursor-grabbing p-1 -ml-1 rounded hover:bg-primary/10 touch-none"
+                                    {...dragHandleProps}
+                                  >
+                                    <GripVertical className="h-4 w-4" />
+                                  </div>
                                 )}
+                                <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                                  <IconComp className="h-4 w-4" />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">
+                                    {grp.title}
+                                  </p>
+                                  {parentNames.length > 1 ? (
+                                    <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                      <Layers className="h-3 w-3 text-primary" />
+                                      Appears in {parentNames.length} folders
+                                    </p>
+                                  ) : (
+                                    <p className="text-[10px] text-muted-foreground truncate">
+                                      {grp.description || "Folder"}
+                                    </p>
+                                  )}
+                                </div>
                               </div>
-                            </div>
 
-                            <Popover>
-                              <PopoverTrigger asChild onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground shrink-0">
-                                  <MoreVertical className="h-4 w-4" />
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent align="end" className="w-36 p-1 space-y-0.5">
-                                <button
-                                  type="button"
-                                  onClick={(e: React.MouseEvent) => {
-                                    e.stopPropagation();
-                                    setEditingGroup(grp);
-                                    setIsGroupModalOpen(true);
-                                  }}
-                                  className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-accent text-left"
-                                >
-                                  <Pencil className="h-3.5 w-3.5" />
-                                  Edit Folder
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={(e: React.MouseEvent) => {
-                                    e.stopPropagation();
-                                    setDeleteTarget({
-                                      id: grp.id,
-                                      title: grp.title,
-                                      isGroup: true,
-                                      hasMultipleParents: parentNames.length > 1,
-                                    });
-                                  }}
-                                  className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-accent text-destructive text-left"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                  {parentNames.length > 1 && currentGroupId ? "Remove from Folder" : "Delete Folder"}
-                                </button>
-                              </PopoverContent>
-                            </Popover>
-                          </CardContent>
-                        </Card>
+                              {!isReorderMode && (
+                                <Popover>
+                                  <PopoverTrigger asChild onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground shrink-0">
+                                      <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent align="end" className="w-36 p-1 space-y-0.5">
+                                    <button
+                                      type="button"
+                                      onClick={(e: React.MouseEvent) => {
+                                        e.stopPropagation();
+                                        setEditingGroup(grp);
+                                        setIsGroupModalOpen(true);
+                                      }}
+                                      className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-accent text-left"
+                                    >
+                                      <Pencil className="h-3.5 w-3.5" />
+                                      Edit Folder
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e: React.MouseEvent) => {
+                                        e.stopPropagation();
+                                        setDeleteTarget({
+                                          id: grp.id,
+                                          title: grp.title,
+                                          isGroup: true,
+                                          hasMultipleParents: parentNames.length > 1,
+                                        });
+                                      }}
+                                      className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-accent text-destructive text-left"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                      {parentNames.length > 1 && currentGroupId ? "Remove from Folder" : "Delete Folder"}
+                                    </button>
+                                  </PopoverContent>
+                                </Popover>
+                              )}
+                            </CardContent>
+                          </Card>
+                        )}
                       </SortableFolder>
                     );
                   })}
                 </div>
               </SortableContext>
+              <DragOverlay dropAnimation={{ duration: 150, easing: "ease" }}>
+                {activeFolder ? <OverlayFolder group={activeFolder} /> : null}
+              </DragOverlay>
             </DndContext>
           </div>
         )}
@@ -534,129 +787,158 @@ export function VaultView() {
             <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Items ({currentItems.length})
             </h2>
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleItemDragEnd}>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleItemDragStart}
+              onDragOver={handleItemDragOver}
+              onDragEnd={handleItemDragEnd}
+              onDragCancel={handleDragCancel}
+            >
               <SortableContext items={currentItems.map((i) => i.id)} strategy={verticalListSortingStrategy}>
                 <div className="space-y-2">
                   {currentItems.map((item) => {
                     const parentNames = getParentNamesForItem(item.id);
 
                     return (
-                      <SortableVaultItem key={item.id} id={item.id}>
-                        <Card className="overflow-hidden cursor-grab active:cursor-grabbing">
-                          <CardContent className="p-3.5 space-y-2">
-                            <div className="flex items-center justify-between gap-3">
-                              <div className="flex items-center gap-2 min-w-0">
-                                <FileText className="h-4 w-4 text-primary shrink-0" />
-                                <span className="text-sm font-semibold truncate">{item.title}</span>
-                                {parentNames.length > 1 && (
-                                  <Badge variant="outline" className="text-[10px] py-0 px-1.5 gap-1 shrink-0 font-normal">
-                                    <Layers className="h-2.5 w-2.5 text-primary" />
-                                    {parentNames.length} folders
-                                  </Badge>
+                      <SortableVaultItem
+                        key={item.id}
+                        id={item.id}
+                        isReorderMode={isReorderMode}
+                        onTriggerReorder={() => setIsReorderMode(true)}
+                      >
+                        {({ dragHandleProps }: { dragHandleProps?: Record<string, unknown> } = {}) => (
+                          <Card className={`overflow-hidden transition-all duration-200 ${
+                            isReorderMode ? "border-primary/40 bg-primary/5 shadow-md" : "hover:border-primary/50"
+                          }`}>
+                            <CardContent className="p-3.5 space-y-2">
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  {isReorderMode && (
+                                    <div
+                                      className="text-primary shrink-0 cursor-grab active:cursor-grabbing p-1 -ml-1 rounded hover:bg-primary/10 touch-none"
+                                      {...dragHandleProps}
+                                    >
+                                      <GripVertical className="h-4 w-4" />
+                                    </div>
+                                  )}
+                                  <FileText className="h-4 w-4 text-primary shrink-0" />
+                                  <span className="text-sm font-semibold truncate">{item.title}</span>
+                                  {parentNames.length > 1 && (
+                                    <Badge variant="outline" className="text-[10px] py-0 px-1.5 gap-1 shrink-0 font-normal">
+                                      <Layers className="h-2.5 w-2.5 text-primary" />
+                                      {parentNames.length} folders
+                                    </Badge>
+                                  )}
+                                </div>
+
+                                {!isReorderMode && (
+                                  <Popover>
+                                    <PopoverTrigger asChild onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+                                      <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground shrink-0">
+                                        <MoreVertical className="h-4 w-4" />
+                                      </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent align="end" className="w-36 p-1 space-y-0.5">
+                                      <button
+                                        type="button"
+                                        onClick={(e: React.MouseEvent) => {
+                                          e.stopPropagation();
+                                          setEditingItem(item);
+                                          setIsItemModalOpen(true);
+                                        }}
+                                        className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-accent text-left"
+                                      >
+                                        <Pencil className="h-3.5 w-3.5" />
+                                        Edit Item
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={(e: React.MouseEvent) => {
+                                          e.stopPropagation();
+                                          setDeleteTarget({
+                                            id: item.id,
+                                            title: item.title,
+                                            isGroup: false,
+                                            hasMultipleParents: parentNames.length > 1,
+                                          });
+                                        }}
+                                        className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-accent text-destructive text-left"
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                        {parentNames.length > 1 && currentGroupId ? "Remove from Folder" : "Delete Item"}
+                                      </button>
+                                    </PopoverContent>
+                                  </Popover>
                                 )}
                               </div>
 
-                              <Popover>
-                                <PopoverTrigger asChild onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-                                  <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground shrink-0">
-                                    <MoreVertical className="h-4 w-4" />
+                              {/* Text Value / Notes with Copy Button */}
+                              {item.value_text && (
+                                <div className="flex items-center justify-between gap-2 text-xs text-foreground bg-muted/40 p-2.5 rounded-lg border font-mono break-all">
+                                  <span className="flex-1 min-w-0">{item.value_text}</span>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 text-muted-foreground hover:text-primary shrink-0"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (navigator.clipboard) {
+                                        navigator.clipboard.writeText(item.value_text || "");
+                                        toast({ title: "Copied to clipboard!" });
+                                      }
+                                    }}
+                                    title="Copy text to clipboard"
+                                  >
+                                    <Copy className="h-3.5 w-3.5" />
                                   </Button>
-                                </PopoverTrigger>
-                                <PopoverContent align="end" className="w-36 p-1 space-y-0.5">
-                                  <button
-                                    type="button"
-                                    onClick={(e: React.MouseEvent) => {
-                                      e.stopPropagation();
-                                      setEditingItem(item);
-                                      setIsItemModalOpen(true);
-                                    }}
-                                    className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-accent text-left"
-                                  >
-                                    <Pencil className="h-3.5 w-3.5" />
-                                    Edit Item
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={(e: React.MouseEvent) => {
-                                      e.stopPropagation();
-                                      setDeleteTarget({
-                                        id: item.id,
-                                        title: item.title,
-                                        isGroup: false,
-                                        hasMultipleParents: parentNames.length > 1,
-                                      });
-                                    }}
-                                    className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-accent text-destructive text-left"
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                    {parentNames.length > 1 && currentGroupId ? "Remove from Folder" : "Delete Item"}
-                                  </button>
-                                </PopoverContent>
-                              </Popover>
-                            </div>
+                                </div>
+                              )}
 
-                            {/* Text Value / Notes with Copy Button */}
-                            {item.value_text && (
-                              <div className="flex items-center justify-between gap-2 text-xs text-foreground bg-muted/40 p-2.5 rounded-lg border font-mono break-all">
-                                <span className="flex-1 min-w-0">{item.value_text}</span>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6 text-muted-foreground hover:text-primary shrink-0"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (navigator.clipboard) {
-                                      navigator.clipboard.writeText(item.value_text || "");
-                                      toast({ title: "Copied to clipboard!" });
-                                    }
-                                  }}
-                                  title="Copy text to clipboard"
-                                >
-                                  <Copy className="h-3.5 w-3.5" />
-                                </Button>
-                              </div>
-                            )}
+                              {/* Date Value */}
+                              {item.value_date && (
+                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
+                                  <Calendar className="h-3.5 w-3.5 text-primary" />
+                                  <span>{formatDisplayDate(new Date(item.value_date))}</span>
+                                </div>
+                              )}
 
-                            {/* Date Value */}
-                            {item.value_date && (
-                              <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
-                                <Calendar className="h-3.5 w-3.5 text-primary" />
-                                <span>{formatDisplayDate(new Date(item.value_date))}</span>
-                              </div>
-                            )}
+                              {/* Document Attachment Preview */}
+                              {item.document_id && (
+                                <div className="pt-1" onClick={(e) => e.stopPropagation()}>
+                                  <FilePreview
+                                    documentId={item.document_id}
+                                    fileName={item.title}
+                                    isImage={["jpg", "jpeg", "png", "webp", "gif"].includes(
+                                      item.document?.extension?.toLowerCase() || "",
+                                    )}
+                                  />
+                                </div>
+                              )}
 
-                            {/* Document Attachment Preview */}
-                            {item.document_id && (
-                              <div className="pt-1" onClick={(e) => e.stopPropagation()}>
-                                <FilePreview
-                                  documentId={item.document_id}
-                                  fileName={item.title}
-                                  isImage={["jpg", "jpeg", "png", "webp", "gif"].includes(
-                                    item.document?.extension?.toLowerCase() || "",
-                                  )}
-                                />
-                              </div>
-                            )}
-
-                            {/* Multi-Parent Context Path Badge */}
-                            {parentNames.length > 0 && searchQuery && (
-                              <div className="pt-1 text-[10px] text-muted-foreground flex items-center gap-1 flex-wrap">
-                                <span>Locations:</span>
-                                {parentNames.map((pName) => (
-                                  <Badge key={pName} variant="secondary" className="text-[10px] py-0 px-1 font-normal">
-                                    {pName}
-                                  </Badge>
-                                ))}
-                              </div>
-                            )}
-                          </CardContent>
-                        </Card>
+                              {/* Multi-Parent Context Path Badge */}
+                              {parentNames.length > 0 && searchQuery && (
+                                <div className="pt-1 text-[10px] text-muted-foreground flex items-center gap-1 flex-wrap">
+                                  <span>Locations:</span>
+                                  {parentNames.map((pName) => (
+                                    <Badge key={pName} variant="secondary" className="text-[10px] py-0 px-1 font-normal">
+                                      {pName}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        )}
                       </SortableVaultItem>
                     );
                   })}
                 </div>
               </SortableContext>
+              <DragOverlay dropAnimation={{ duration: 150, easing: "ease" }}>
+                {activeItem ? <OverlayVaultItem item={activeItem} /> : null}
+              </DragOverlay>
             </DndContext>
           </div>
         )}
