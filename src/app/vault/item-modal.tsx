@@ -8,10 +8,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAppStore, type VaultItemRow } from "@/lib/store/use-app-store";
 import { toast } from "@/components/ui/use-toast";
-import { Loader2, Paperclip, Upload } from "lucide-react";
+import { Loader2, Paperclip } from "lucide-react";
 import { FilePreview } from "@/components/documents/file-preview";
 import { DatePickerInput } from "@/components/custom-fields/date-picker-input";
-import { formatToSlashDate, parseSlashDateToUTCNoonISO } from "@/lib/date-utils";
 
 interface ItemModalProps {
   isOpen: boolean;
@@ -31,7 +30,7 @@ export function ItemModal({ isOpen, onOpenChange, itemToEdit, defaultGroupId }: 
 
   const [title, setTitle] = React.useState("");
   const [valueText, setValueText] = React.useState("");
-  const [slashDate, setSlashDate] = React.useState<string | null>(null);
+  const [valueDateISO, setValueDateISO] = React.useState<string | null>(null);
   const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
   const [existingDocumentId, setExistingDocumentId] = React.useState<string | null>(null);
   const [selectedGroupIds, setSelectedGroupIds] = React.useState<string[]>([]);
@@ -41,21 +40,21 @@ export function ItemModal({ isOpen, onOpenChange, itemToEdit, defaultGroupId }: 
     if (itemToEdit) {
       setTitle(itemToEdit.title);
       setValueText(itemToEdit.value_text || "");
-      setSlashDate(
+      setValueDateISO(
         itemToEdit.value_date
-          ? formatToSlashDate(new Date(itemToEdit.value_date))
+          ? new Date(itemToEdit.value_date).toISOString()
           : null,
       );
       setExistingDocumentId(itemToEdit.document_id || null);
       setSelectedFile(null);
-      const currentGroups = vaultGroupItemLinks
+      const currentGroups = (vaultGroupItemLinks || [])
         .filter((l) => l.item_id === itemToEdit.id)
         .map((l) => l.group_id);
       setSelectedGroupIds(currentGroups);
     } else {
       setTitle("");
       setValueText("");
-      setSlashDate(null);
+      setValueDateISO(null);
       setExistingDocumentId(null);
       setSelectedFile(null);
       setSelectedGroupIds(defaultGroupId ? [defaultGroupId] : []);
@@ -97,13 +96,12 @@ export function ItemModal({ isOpen, onOpenChange, itemToEdit, defaultGroupId }: 
         finalDocId = uploaded.id;
       }
 
-      const isoDate = slashDate ? parseSlashDateToUTCNoonISO(slashDate) : null;
       const tempId = itemToEdit ? itemToEdit.id : `temp-${Date.now()}`;
       const itemPayload: VaultItemRow = {
         id: tempId,
         title: title.trim(),
         value_text: valueText.trim() || null,
-        value_date: isoDate,
+        value_date: valueDateISO,
         document_id: finalDocId,
         created_at: itemToEdit ? itemToEdit.created_at : new Date().toISOString(),
       };
@@ -126,7 +124,7 @@ export function ItemModal({ isOpen, onOpenChange, itemToEdit, defaultGroupId }: 
           id: itemToEdit ? itemToEdit.id : undefined,
           title: title.trim(),
           value_text: valueText.trim() || undefined,
-          value_date: isoDate,
+          value_date: valueDateISO,
           document_id: finalDocId,
           group_ids: selectedGroupIds,
         }),
@@ -160,19 +158,19 @@ export function ItemModal({ isOpen, onOpenChange, itemToEdit, defaultGroupId }: 
             </Label>
             <Input
               id="item-title"
-              placeholder="e.g. 10th Marksheet or Passport No"
+              placeholder="e.g. 10th Marksheet, Aadhaar No, or Receipt"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="h-10"
+              className="h-10 text-xs"
               required
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="item-text">Text / Notes (Optional)</Label>
+            <Label htmlFor="item-text">Details / Notes (Optional)</Label>
             <Textarea
               id="item-text"
-              placeholder="Details or value"
+              placeholder="Enter text, numbers, or details"
               value={valueText}
               onChange={(e) => setValueText(e.target.value)}
               className="h-16 text-xs resize-none"
@@ -183,8 +181,8 @@ export function ItemModal({ isOpen, onOpenChange, itemToEdit, defaultGroupId }: 
             <Label htmlFor="item-date">Date (Optional)</Label>
             <DatePickerInput
               id="item-date"
-              value={slashDate}
-              onChange={(val) => setSlashDate(val as string | null)}
+              value={valueDateISO}
+              onChange={(val) => setValueDateISO(val || null)}
             />
           </div>
 
@@ -192,11 +190,11 @@ export function ItemModal({ isOpen, onOpenChange, itemToEdit, defaultGroupId }: 
           <div className="space-y-1.5 border-t pt-2">
             <Label className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               <Paperclip className="h-3.5 w-3.5 text-primary" />
-              Attached Document / Image (Optional)
+              Attached File or Image (Optional)
             </Label>
             {existingDocumentId && !selectedFile && (
               <div className="flex items-center gap-2 py-1.5 px-2 bg-muted/40 rounded border text-xs">
-                <span className="text-muted-foreground">Current File:</span>
+                <span className="text-muted-foreground">Attached:</span>
                 <FilePreview documentId={existingDocumentId} fileName={title} />
               </div>
             )}
@@ -207,11 +205,11 @@ export function ItemModal({ isOpen, onOpenChange, itemToEdit, defaultGroupId }: 
             />
           </div>
 
-          {/* Multi-Parent Assignment */}
+          {/* Senior-Friendly Group Assignment */}
           {vaultGroups.length > 0 && (
             <div className="space-y-2 pt-1 border-t">
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Assign to Groups (Multi-Group Linking)
+                Appear In Groups / Folders
               </Label>
               <div className="max-h-36 overflow-y-auto space-y-1 pr-1 border rounded-lg p-2 bg-muted/20">
                 {vaultGroups.map((g) => {
@@ -228,7 +226,7 @@ export function ItemModal({ isOpen, onOpenChange, itemToEdit, defaultGroupId }: 
                         />
                         <span className="font-medium">{g.title}</span>
                       </div>
-                      {isChecked && <span className="text-[10px] text-primary font-semibold">Linked</span>}
+                      {isChecked && <span className="text-[10px] text-primary font-semibold">Selected</span>}
                     </label>
                   );
                 })}

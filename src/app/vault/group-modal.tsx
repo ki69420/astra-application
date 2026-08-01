@@ -199,11 +199,11 @@ export function GroupModal({ isOpen, onOpenChange, groupToEdit, defaultParentId 
             </div>
           </div>
 
-          {/* Multi-Parent Assignment */}
+          {/* Senior-Friendly Parent Folder Assignment */}
           {availableParentGroups.length > 0 && (
             <div className="space-y-2 pt-1 border-t">
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Parent Groups (Multi-Parent Linking)
+                Appear Inside Other Folders
               </Label>
               <div className="max-h-36 overflow-y-auto space-y-1 pr-1 border rounded-lg p-2 bg-muted/20">
                 {availableParentGroups.map((g) => {
@@ -220,7 +220,7 @@ export function GroupModal({ isOpen, onOpenChange, groupToEdit, defaultParentId 
                         />
                         <span className="font-medium">{g.title}</span>
                       </div>
-                      {isChecked && <span className="text-[10px] text-primary font-semibold">Linked</span>}
+                      {isChecked && <span className="text-[10px] text-primary font-semibold">Selected</span>}
                     </label>
                   );
                 })}

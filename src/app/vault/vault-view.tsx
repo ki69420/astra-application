@@ -19,7 +19,9 @@ import {
   IdCard,
   Bookmark,
   Award,
+  Copy,
 } from "lucide-react";
+import { useNavigationStore } from "@/lib/store/use-navigation-store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -194,11 +196,11 @@ export function VaultView() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setIsTreeView(!isTreeView)}
+              onClick={() => useNavigationStore.getState().navigateTo("vault-manage")}
               className="h-8 gap-1 text-xs"
             >
-              {isTreeView ? <FolderTree className="h-3.5 w-3.5" /> : <ListTree className="h-3.5 w-3.5" />}
-              {isTreeView ? "Folder View" : "Tree View"}
+              <ListTree className="h-3.5 w-3.5" />
+              Organize
             </Button>
             <Button
               variant="outline"
@@ -210,7 +212,7 @@ export function VaultView() {
               className="h-8 gap-1 text-xs"
             >
               <Plus className="h-3.5 w-3.5" />
-              Group
+              Folder
             </Button>
             <Button
               size="sm"
@@ -465,11 +467,27 @@ export function VaultView() {
                         </Popover>
                       </div>
 
-                      {/* Text Value / Notes */}
+                      {/* Text Value / Notes with Copy Button */}
                       {item.value_text && (
-                        <p className="text-xs text-foreground bg-muted/40 p-2 rounded border font-mono break-all">
-                          {item.value_text}
-                        </p>
+                        <div className="flex items-center justify-between gap-2 text-xs text-foreground bg-muted/40 p-2.5 rounded-lg border font-mono break-all">
+                          <span className="flex-1 min-w-0">{item.value_text}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-muted-foreground hover:text-primary shrink-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (navigator.clipboard) {
+                                navigator.clipboard.writeText(item.value_text || "");
+                                toast({ title: "Copied to clipboard!" });
+                              }
+                            }}
+                            title="Copy text to clipboard"
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       )}
 
                       {/* Date Value */}

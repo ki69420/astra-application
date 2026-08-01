@@ -193,8 +193,8 @@ export function CustomFieldsTable({ fields: initialFields = [] }: { fields?: Fie
     <div>
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b px-4 py-3 flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-bold leading-tight">Custom Fields</h1>
-          <p className="text-xs text-muted-foreground">{fields.length} fields defined</p>
+          <h1 className="text-lg font-bold leading-tight">Student Profile Fields</h1>
+          <p className="text-xs text-muted-foreground">{fields.length} profile fields setup</p>
         </div>
         <NavButton href="/custom-fields/new">
           <Plus className="h-4 w-4 mr-1" />

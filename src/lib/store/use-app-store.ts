@@ -80,10 +80,9 @@ export type VaultItemRow = {
   value_text?: string | null;
   value_date?: Date | null | string;
   document_id?: string | null;
-  custom_field_id?: string | null;
+  display_order?: number | null;
   created_at: Date | string;
   document?: DocumentRow | null;
-  custom_field?: CustomField | null;
 };
 
 export type VaultGroupItemRow = {

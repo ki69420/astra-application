@@ -218,7 +218,7 @@ export function CustomFieldForm({ defaultValues, fieldId }: CustomFieldFormProps
                     )}
                   />
                   <Label htmlFor="show_in_homepage" className="text-sm leading-snug cursor-pointer">
-                    Show this in Homepage
+                    Show on Student List Screen
                   </Label>
                 </div>
 
@@ -236,7 +236,7 @@ export function CustomFieldForm({ defaultValues, fieldId }: CustomFieldFormProps
                     )}
                   />
                   <Label htmlFor="is_searchable" className="text-sm leading-snug cursor-pointer">
-                    Filterable in Students Page
+                    Enable Search &amp; Filter
                   </Label>
                 </div>
               </>

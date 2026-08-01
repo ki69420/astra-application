@@ -1,10 +1,10 @@
 "use client";
 import * as React from "react";
-import Link from "next/link";
 import { ArrowLeft, GripVertical, Folder, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAppStore, type VaultGroupRow, type VaultItemRow } from "@/lib/store/use-app-store";
+import { useNavigationStore } from "@/lib/store/use-navigation-store";
 import {
   DndContext,
   closestCenter,
@@ -49,7 +49,7 @@ function SortableItem({ id, title, isGroup }: { id: string; title: string; isGro
             <span className="text-sm font-medium truncate">{title}</span>
           </div>
           <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-2 py-0.5 rounded bg-muted">
-            {isGroup ? "Group" : "Item"}
+            {isGroup ? "Folder" : "Item"}
           </span>
         </CardContent>
       </Card>
@@ -91,31 +91,56 @@ export function VaultManageView() {
             body: JSON.stringify({ id: g.id, display_order: idx }),
           });
         });
-        toast({ title: "Groups reordered" });
+        toast({ title: "Folders reordered" });
+        return reordered;
+      });
+    }
+  };
+
+  const handleItemDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setLocalItems((items) => {
+        const oldIndex = items.findIndex((i) => i.id === active.id);
+        const newIndex = items.findIndex((i) => i.id === over.id);
+        const reordered = arrayMove(items, oldIndex, newIndex);
+        reordered.forEach((item, idx) => {
+          optimisticUpdateVaultItem(item.id, { display_order: idx });
+          fetch("/api/vault/items", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: item.id, display_order: idx }),
+          });
+        });
+        toast({ title: "Vault items reordered" });
         return reordered;
       });
     }
   };
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col">
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b px-4 py-3 flex items-center gap-2">
-        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" asChild>
-          <Link href="/vault">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 shrink-0"
+          type="button"
+          onClick={() => useNavigationStore.getState().navigateTo("vault")}
+        >
+          <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h1 className="text-base font-bold">Manage Vault Hierarchy</h1>
-          <p className="text-xs text-muted-foreground">Drag to reorder groups and items</p>
+          <h1 className="text-base font-bold">Organize &amp; Reorder Vault</h1>
+          <p className="text-xs text-muted-foreground">Drag folders or items to change their display order</p>
         </div>
       </header>
 
       <div className="px-4 py-4 space-y-6">
-        {/* Reorder Groups */}
+        {/* Reorder Groups / Folders */}
         <div className="space-y-3">
           <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            Reorder Groups ({localGroups.length})
+            Reorder Folders ({localGroups.length})
           </h2>
 
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleGroupDragEnd}>
@@ -128,6 +153,25 @@ export function VaultManageView() {
             </SortableContext>
           </DndContext>
         </div>
+
+        {/* Reorder Items */}
+        {localItems.length > 0 && (
+          <div className="space-y-3 border-t pt-4">
+            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Reorder Vault Items ({localItems.length})
+            </h2>
+
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleItemDragEnd}>
+              <SortableContext items={localItems.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+                <div className="space-y-2">
+                  {localItems.map((item) => (
+                    <SortableItem key={item.id} id={item.id} title={item.title} isGroup={false} />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+          </div>
+        )}
       </div>
     </div>
   );

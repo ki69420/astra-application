@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAppStore, type TextSize } from "@/lib/store/use-app-store";
 import { Check, ChevronRight, Info, Type, Phone, GraduationCap } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
+import { useNavigationStore } from "@/lib/store/use-navigation-store";
 
 const TEXT_SIZES: Array<{
   id: TextSize;
@@ -137,9 +138,10 @@ export default function SettingsPage() {
         {/* About Section Tile */}
         <Card className="hover:border-primary/50 transition-colors">
           <CardContent className="p-0">
-            <Link
-              href="/settings/about"
-              className="flex items-center justify-between p-4 rounded-xl hover:bg-accent/40 transition-colors"
+            <button
+              type="button"
+              onClick={() => useNavigationStore.getState().navigateTo("settings-about")}
+              className="w-full flex items-center justify-between p-4 rounded-xl hover:bg-accent/40 transition-colors text-left"
             >
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
@@ -151,7 +153,7 @@ export default function SettingsPage() {
                 </div>
               </div>
               <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
-            </Link>
+            </button>
           </CardContent>
         </Card>
       </div>
